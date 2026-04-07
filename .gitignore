@@ -3,3 +3,10 @@ dist
 node_modules
 .vscode-test/
 *.vsix
+CLAUDE.local.md
+.claude/settings.local.json
+.env
+.env.local
+*.pyc
+__pycache__/
+.DS_Store
