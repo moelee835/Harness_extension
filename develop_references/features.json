@@ -1,0 +1,371 @@
+[
+  {
+    "id": "F-001",
+    "category": "infrastructure",
+    "description": "Extension activates when a workspace is opened in VSCode",
+    "steps": [
+      "Open VSCode with a workspace folder",
+      "Verify the extension activates without errors",
+      "Check the Output panel shows no activation errors",
+      "Verify all commands declared in package.json contributes.commands are registered"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-002",
+    "category": "infrastructure",
+    "description": "Extension deactivates cleanly and releases all disposables",
+    "steps": [
+      "Activate the extension",
+      "Disable or uninstall the extension",
+      "Verify deactivate() is called without errors",
+      "Verify no memory leaks — all context.subscriptions items are disposed"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-003",
+    "category": "infrastructure",
+    "description": "Extension can be packaged as a .vsix file",
+    "steps": [
+      "Run npm run package",
+      "Verify dist/extension.js is generated",
+      "Verify a .vsix file is created in the project root",
+      "Install the .vsix in VSCode via 'Install from VSIX'",
+      "Verify the extension works after installation"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-004",
+    "category": "functional",
+    "description": "Main panel opens when the extension's primary command is executed",
+    "steps": [
+      "Open the command palette (Ctrl+Shift+P)",
+      "Execute the extension's main open command",
+      "Verify a WebviewPanel opens",
+      "Verify the panel title is correct",
+      "Verify the panel renders without errors"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-005",
+    "category": "functional",
+    "description": "User can input project requirement data through the main panel form",
+    "steps": [
+      "Open the main WebviewPanel",
+      "Locate the input form area",
+      "Type project requirement text into the input field",
+      "Verify the typed content is displayed in the field",
+      "Verify the input value is retained when the panel regains focus"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-006",
+    "category": "functional",
+    "description": "User input data is converted to Markdown format for agent consumption",
+    "steps": [
+      "Enter structured project requirement data in the input form",
+      "Trigger the Markdown conversion action",
+      "Verify MarkdownConverter produces valid Markdown output",
+      "Verify the converted Markdown is displayed or made available to the next step",
+      "Verify no data is lost during conversion"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-007",
+    "category": "functional",
+    "description": "Init Project button triggers project initialization via the configured CLI agent",
+    "steps": [
+      "Open the main WebviewPanel",
+      "Click the 'Init Project' button",
+      "Verify InitService loads the built-in init prompt (no external file dependency)",
+      "Verify AgentRunnerFactory creates the correct IAgentRunner based on current AgentConfig",
+      "Verify the CLI agent process is spawned with the init prompt",
+      "Verify .claude/ directory and required harness files are created in the workspace",
+      "Verify a success message and list of created files are shown in the UI"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-008",
+    "category": "functional",
+    "description": "AnalyzerService generates a Command markdown file at .claude/commands/",
+    "steps": [
+      "Provide Markdown-formatted input describing a custom command",
+      "Trigger the Analyzer action",
+      "Verify AnalyzerService calls the configured CLI agent (sub-agent mode)",
+      "Verify a new .md file is created under .claude/commands/",
+      "Verify the file contains the command name, description, and task steps"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-009",
+    "category": "functional",
+    "description": "AnalyzerService generates a Skill markdown file",
+    "steps": [
+      "Provide Markdown-formatted input describing a skill",
+      "Trigger the Analyzer action",
+      "Verify a new skill .md file is created in the appropriate directory",
+      "Verify the file contains the skill trigger conditions and behavior description"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-010",
+    "category": "functional",
+    "description": "AnalyzerService generates an MCP server spec file",
+    "steps": [
+      "Provide Markdown-formatted input describing an MCP server requirement",
+      "Trigger the Analyzer action",
+      "Verify a MCP spec file (.json or .md) is created",
+      "Verify the spec file contains the server name and configuration fields"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-011",
+    "category": "functional",
+    "description": "AnalyzerService generates a hook configuration entry",
+    "steps": [
+      "Provide Markdown-formatted input describing a hook (e.g. pre-tool-use)",
+      "Trigger the Analyzer action",
+      "Verify the hook configuration is written to .claude/settings.json or a dedicated file",
+      "Verify the hook entry contains the correct event name and shell command"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-012",
+    "category": "functional",
+    "description": "AnalyzerService generates a sub-agent markdown file at .claude/agents/",
+    "steps": [
+      "Provide Markdown-formatted input describing a sub-agent role",
+      "Trigger the Analyzer action",
+      "Verify a new .md file is created under .claude/agents/<agent-name>/",
+      "Verify the file contains the agent description, tools, and behavior rules"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-013",
+    "category": "functional",
+    "description": "Plan view renders the current PLAN.md content as a readable stepped list",
+    "steps": [
+      "Ensure .claude/plans/PLAN.md exists with at least one plan section",
+      "Open or navigate to the Plan view in the extension",
+      "Verify PlanService reads PLAN.md",
+      "Verify the plan steps are rendered as a numbered or checkable list",
+      "Verify completed steps (checked) are visually distinct from pending steps"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-014",
+    "category": "functional",
+    "description": "User can select the CLI agent type (Claude Code, Gemini, Custom) in settings",
+    "steps": [
+      "Open the Agent Settings view in the extension",
+      "Locate the agent type selector (dropdown or radio group)",
+      "Select 'Claude Code'",
+      "Verify the selection is saved to AgentConfig",
+      "Select 'Gemini'",
+      "Verify the selection is saved to AgentConfig",
+      "Select 'Custom'",
+      "Verify the selection is saved to AgentConfig"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-015",
+    "category": "functional",
+    "description": "User can set the CLI executable path in agent settings",
+    "steps": [
+      "Open the Agent Settings view",
+      "Locate the CLI path input field",
+      "Enter a custom path (e.g. /usr/local/bin/claude)",
+      "Save settings",
+      "Verify the path is persisted via vscode.workspace.getConfiguration or JSON",
+      "Reload the panel and verify the saved path is pre-filled"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-016",
+    "category": "functional",
+    "description": "User can set extra CLI flags in agent settings",
+    "steps": [
+      "Open the Agent Settings view",
+      "Locate the extra arguments input field",
+      "Enter additional flags (e.g. --verbose --model claude-opus-4-6)",
+      "Save settings",
+      "Trigger an agent action",
+      "Verify the extra flags are appended to the child_process.spawn args array"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-017",
+    "category": "functional",
+    "description": "AgentRunnerFactory returns ClaudeCodeRunner when agentType is 'claude'",
+    "steps": [
+      "Set agentType to 'claude' in AgentConfig",
+      "Call AgentRunnerFactory.create(config)",
+      "Verify the returned object is an instance of ClaudeCodeRunner",
+      "Invoke the runner with a test prompt",
+      "Verify child_process.spawn is called with 'claude' as the command"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-018",
+    "category": "functional",
+    "description": "AgentRunnerFactory returns GeminiCliRunner when agentType is 'gemini'",
+    "steps": [
+      "Set agentType to 'gemini' in AgentConfig",
+      "Call AgentRunnerFactory.create(config)",
+      "Verify the returned object is an instance of GeminiCliRunner",
+      "Invoke the runner with a test prompt",
+      "Verify child_process.spawn is called with 'gemini' as the command"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-019",
+    "category": "functional",
+    "description": "AgentRunnerFactory returns CustomCliRunner when agentType is 'custom'",
+    "steps": [
+      "Set agentType to 'custom' and cliPath to a custom executable in AgentConfig",
+      "Call AgentRunnerFactory.create(config)",
+      "Verify the returned object is an instance of CustomCliRunner",
+      "Invoke the runner with a test prompt",
+      "Verify child_process.spawn is called with the user-specified cliPath"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-020",
+    "category": "functional",
+    "description": "CLI agent stdout and stderr output is streamed and displayed in the UI",
+    "steps": [
+      "Trigger any action that invokes IAgentRunner",
+      "Verify the spawned process stdout is captured in real time",
+      "Verify the output is forwarded to the WebviewPanel output area",
+      "Verify stderr messages are shown with a distinct error style",
+      "Verify the output area scrolls to the latest line automatically"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-021",
+    "category": "functional",
+    "description": "FileManager creates a new .md file at a specified path",
+    "steps": [
+      "Call FileManager.create(path, content) with a target path and Markdown string",
+      "Verify the file is created at the specified path",
+      "Verify the file content matches the input string",
+      "Verify an error is thrown if the parent directory does not exist"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-022",
+    "category": "functional",
+    "description": "FileManager reads a .md file from a specified path",
+    "steps": [
+      "Create a test .md file at a known path",
+      "Call FileManager.read(path)",
+      "Verify the returned string matches the file content",
+      "Verify an error is thrown if the file does not exist"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-023",
+    "category": "functional",
+    "description": "FileManager updates (overwrites) a .md file at a specified path",
+    "steps": [
+      "Create a test .md file with initial content",
+      "Call FileManager.update(path, newContent)",
+      "Verify the file now contains newContent",
+      "Verify the original content is fully replaced"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-024",
+    "category": "functional",
+    "description": "FileManager deletes a .md file at a specified path",
+    "steps": [
+      "Create a test .md file",
+      "Call FileManager.delete(path)",
+      "Verify the file no longer exists on the filesystem",
+      "Verify an error is thrown if the file does not exist"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-025",
+    "category": "functional",
+    "description": "FileManager lists all .md files in a specified directory",
+    "steps": [
+      "Create multiple .md files in a test directory",
+      "Call FileManager.list(directoryPath)",
+      "Verify all .md file paths are returned",
+      "Verify non-.md files are excluded from the result",
+      "Verify an empty array is returned for a directory with no .md files"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-026",
+    "category": "functional",
+    "description": "UI displays the list of files created or modified after an agent action completes",
+    "steps": [
+      "Trigger an agent action (e.g. Init or Analyzer)",
+      "Wait for the CLI agent process to exit",
+      "Verify FileManager.list() is called on the relevant .claude/ subdirectory",
+      "Verify the result file list is rendered in the WebviewPanel",
+      "Verify each file entry is clickable and opens the file in the VSCode editor"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-027",
+    "category": "functional",
+    "description": "Agent settings are persisted across VSCode sessions",
+    "steps": [
+      "Set agentType, cliPath, and extraArgs in the Agent Settings view",
+      "Close and reopen VSCode",
+      "Open the Agent Settings view again",
+      "Verify all three settings are pre-populated with the previously saved values"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-028",
+    "category": "infrastructure",
+    "description": "TypeScript compilation passes with no type errors",
+    "steps": [
+      "Run npm run check-types",
+      "Verify the command exits with code 0",
+      "Verify no TypeScript errors are printed to stdout or stderr"
+    ],
+    "passes": false
+  },
+  {
+    "id": "F-029",
+    "category": "infrastructure",
+    "description": "ESLint passes with no lint errors on the src/ directory",
+    "steps": [
+      "Run npm run lint",
+      "Verify the command exits with code 0",
+      "Verify no ESLint errors or warnings are printed"
+    ],
+    "passes": false
+  }
+]
