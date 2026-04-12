@@ -1,5 +1,7 @@
 // VSCode 확장 기능 API 가져오기
 import * as vscode from 'vscode';
+// 메인 패널 UI 클래스 가져오기
+import { MainPanel } from './ui/MainPanel.js';
 
 /**
  * Extension 활성화 진입점.
@@ -22,8 +24,18 @@ export function activate(context: vscode.ExtensionContext): void {
 		}
 	);
 
+	// openMainPanel 명령 등록 — F-004: 메인 패널 열기
+	// package.json의 contributes.commands에 선언된 ID와 반드시 일치해야 함
+	const openMainPanelDisposable = vscode.commands.registerCommand(
+		'agent-harness-framework.openMainPanel',
+		() => {
+			// MainPanel.show()를 호출하여 패널을 열거나 기존 패널에 포커스 이동
+			MainPanel.show(context.extensionUri);
+		}
+	);
+
 	// 등록한 모든 disposable을 subscriptions에 추가하여 Extension 비활성화 시 자동 해제
-	context.subscriptions.push(helloWorldDisposable);
+	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable);
 }
 
 /**

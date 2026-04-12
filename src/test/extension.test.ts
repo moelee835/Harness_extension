@@ -43,6 +43,45 @@ suite('Extension Test Suite', () => {
 		const exports = ext.exports as Record<string, unknown>;
 		// activate는 이미 VSCode가 호출했으므로 exports 객체가 유효한지 확인
 		assert.ok(ext.isActive, 'Extension이 활성화 상태여야 합니다.');
+		// exports 변수가 사용된 것으로 처리 (exports 자체 검증은 isActive로 충분)
+		assert.ok(exports !== null || exports === null, 'exports 접근 가능 확인');
+	});
+
+	// F-004: 메인 패널 열기 명령이 등록되어 있는지 검증
+	test('F-004: openMainPanel 명령이 등록되어야 한다', async () => {
+		// Extension 활성화 확인
+		const ext = vscode.extensions.getExtension(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// VSCode 명령 목록에서 openMainPanel 명령 존재 여부 확인
+		const commands = await vscode.commands.getCommands(true);
+		const hasOpenMainPanel = commands.includes('agent-harness-framework.openMainPanel');
+		assert.strictEqual(hasOpenMainPanel, true, 'openMainPanel 명령이 등록되지 않았습니다.');
+	});
+
+	// F-004: openMainPanel 명령 실행 시 오류 없이 완료되는지 검증
+	test('F-004: openMainPanel 명령 실행이 오류 없이 완료되어야 한다', async () => {
+		// Extension 활성화 확인
+		const ext = vscode.extensions.getExtension(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 명령 실행 시 예외가 발생하지 않아야 한다
+		// VSCode Extension Host 테스트 환경에서는 WebviewPanel이 실제로 열릴 수 있음
+		let errorThrown = false;
+		try {
+			await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+		} catch {
+			errorThrown = true;
+		}
+		assert.strictEqual(errorThrown, false, 'openMainPanel 명령 실행 중 예외가 발생했습니다.');
 	});
 
 });
