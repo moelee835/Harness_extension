@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 10개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-028, F-029, F-030, F-031, F-032)
-- 마지막 커밋: fa0d125 feat(F-005): 메인 패널 프로젝트 요구사항 입력 폼 구현
+- 완료된 기능: 11개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-014, F-028, F-029, F-030, F-031, F-032)
+- 마지막 커밋: d755581 feat(F-014): 에이전트 타입 선택 설정 UI 구현
 
 ## 다음 우선 작업
 
@@ -20,7 +20,7 @@
 - [x] F-004: Main panel opens when the extension's primary command is executed (category: functional) — 14d81a5
 - [x] F-032: 이미 열린 메인 패널이 있을 때 명령을 재실행하면 새 패널이 열리지 않고 기존 패널이 포커스된다 (category: functional, priority: 3) — 27f6313
 - [x] F-005: User can input project requirement data through the main panel form (category: functional) — fa0d125
-- [ ] F-014: User can select the CLI agent type in settings (category: functional)
+- [x] F-014: User can select the CLI agent type in settings (category: functional) — d755581
 - [ ] F-015: User can set the CLI executable path in agent settings (category: functional)
 - [ ] F-016: User can set extra CLI flags in agent settings (category: functional)
 - [ ] F-027: Agent settings are persisted across VSCode sessions (category: functional)
@@ -81,6 +81,16 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 5 (Coding Agent)
+
+- F-014: 에이전트 타입 선택 설정 UI 구현
+  - src/config/AgentConfig.ts 신규 생성 — AgentType 타입 정의, AgentConfig 클래스 (getAgentType/setAgentType)
+  - src/ui/AgentSettingsView.ts 신규 생성 — WebviewPanel 기반 설정 뷰 (싱글톤, 드롭다운 UI, setAgentType 메시지 처리)
+  - src/extension.ts — openAgentSettings 명령 등록, ExtensionApi에 AgentSettingsView 추가
+  - package.json — openAgentSettings 명령 및 agentHarness.agentType 설정 스키마 추가
+  - src/test/extension.test.ts: F-014 테스트 3건 추가 (명령 등록, 드롭다운 HTML, 타입별 저장 검증)
+  - 11 passing (F-001×2, F-002×1, F-004×2, F-032×1, F-005×2, F-014×3)
 
 ### 2026-04-13 — Ralph Loop 세션 4 (Coding Agent)
 

@@ -183,7 +183,8 @@
       "Select 'Custom'",
       "Verify the selection is saved to AgentConfig"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "d755581"
   },
   {
     "id": "F-015",
