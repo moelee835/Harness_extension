@@ -64,7 +64,8 @@
       "Verify the typed content is displayed in the field",
       "Verify the input value is retained when the panel regains focus"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "fa0d12507c8e063d444a282193e82de65becac33"
   },
   {
     "id": "F-006",

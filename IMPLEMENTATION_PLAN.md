@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 9개 / 전체 34개 (F-001, F-002, F-003, F-004, F-028, F-029, F-030, F-031, F-032)
-- 마지막 커밋: 27f6313 feat(F-032): 메인 패널 중복 생성 방지 — 재실행 시 기존 패널 포커스
+- 완료된 기능: 10개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-028, F-029, F-030, F-031, F-032)
+- 마지막 커밋: fa0d125 feat(F-005): 메인 패널 프로젝트 요구사항 입력 폼 구현
 
 ## 다음 우선 작업
 
@@ -19,7 +19,7 @@
 - [x] F-003: Extension can be packaged as a .vsix file (category: infrastructure) — 1dbfc87
 - [x] F-004: Main panel opens when the extension's primary command is executed (category: functional) — 14d81a5
 - [x] F-032: 이미 열린 메인 패널이 있을 때 명령을 재실행하면 새 패널이 열리지 않고 기존 패널이 포커스된다 (category: functional, priority: 3) — 27f6313
-- [ ] F-005: User can input project requirement data through the main panel form (category: functional)
+- [x] F-005: User can input project requirement data through the main panel form (category: functional) — fa0d125
 - [ ] F-014: User can select the CLI agent type in settings (category: functional)
 - [ ] F-015: User can set the CLI executable path in agent settings (category: functional)
 - [ ] F-016: User can set extra CLI flags in agent settings (category: functional)
@@ -81,6 +81,15 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 4 (Coding Agent)
+
+- F-005: 메인 패널 프로젝트 요구사항 입력 폼 구현
+  - src/ui/MainPanel.ts: WebviewMessage 인터페이스, _inputValue 필드, onDidReceiveMessage 핸들러, _processMessage() 추가
+  - src/ui/MainPanel.ts: getInputValue(), simulateWebviewMessage(), getHtmlForTest() 정적 메서드 추가
+  - HTML에 id="requirement-input" textarea 폼 추가, 웹뷰 스크립트에서 input 이벤트 시 postMessage() 호출
+  - src/test/extension.test.ts: F-005 테스트 2건 추가 (textarea 존재 검증, 메시지 저장 검증)
+  - 8 passing (F-001×2, F-002×1, F-004×2, F-032×1, F-005×2)
 
 ### 2026-04-13 — Ralph Loop 세션 3 (Coding Agent)
 
