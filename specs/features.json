@@ -36,7 +36,8 @@
       "Install the .vsix in VSCode via 'Install from VSIX'",
       "Verify the extension works after installation"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "1dbfc87"
   },
   {
     "id": "F-004",

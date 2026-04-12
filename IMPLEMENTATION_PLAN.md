@@ -1,22 +1,22 @@
 # IMPLEMENTATION_PLAN.md
 
-## 현재 상태 (마지막 업데이트: 2026-04-12)
+## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 0개 / 전체 34개
-- 마지막 커밋: 304b067 feat(harness): Ralph Loop 커맨드 체계 정비 및 외부 지식 문서 추가
+- 완료된 기능: 7개 / 전체 34개 (F-001, F-002, F-003, F-028, F-029, F-030, F-031)
+- 마지막 커밋: 1dbfc87 feat(F-003): .vsix 패키징 기능 구현
 
 ## 다음 우선 작업
 
 아래 항목을 이 순서대로 구현합니다.
 레이어 의존성 기준: 인프라 → UI 진입점 → 서비스 → 영속성 → 완성 기능
 
-- [ ] F-001: Extension activates when a workspace is opened in VSCode (category: infrastructure)
-- [ ] F-002: Extension deactivates cleanly and releases all disposables (category: infrastructure)
-- [ ] F-028: TypeScript compilation passes with no type errors (category: infrastructure)
-- [ ] F-029: ESLint passes with no lint errors on the src/ directory (category: infrastructure)
-- [ ] F-030: esbuild가 src/extension.ts를 dist/extension.js로 오류 없이 번들링한다 (category: infrastructure, priority: 1)
-- [ ] F-031: npm test (Mocha + @vscode/test-cli)가 오류 없이 통과된다 (category: infrastructure, priority: 2)
-- [ ] F-003: Extension can be packaged as a .vsix file (category: infrastructure)
+- [x] F-001: Extension activates when a workspace is opened in VSCode (category: infrastructure) — 50e9d0c
+- [x] F-002: Extension deactivates cleanly and releases all disposables (category: infrastructure) — 50e9d0c
+- [x] F-028: TypeScript compilation passes with no type errors (category: infrastructure) — 50e9d0c
+- [x] F-029: ESLint passes with no lint errors on the src/ directory (category: infrastructure) — 50e9d0c
+- [x] F-030: esbuild가 src/extension.ts를 dist/extension.js로 오류 없이 번들링한다 (category: infrastructure, priority: 1) — 50e9d0c
+- [x] F-031: npm test (Mocha + @vscode/test-cli)가 오류 없이 통과된다 (category: infrastructure, priority: 2) — 50e9d0c
+- [x] F-003: Extension can be packaged as a .vsix file (category: infrastructure) — 1dbfc87
 - [ ] F-004: Main panel opens when the extension's primary command is executed (category: functional)
 - [ ] F-032: 이미 열린 메인 패널이 있을 때 명령을 재실행하면 새 패널이 열리지 않고 기존 패널이 포커스된다 (category: functional, priority: 3)
 - [ ] F-005: User can input project requirement data through the main panel form (category: functional)
@@ -81,3 +81,12 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 1 (Coding Agent)
+
+- F-001, F-002: 이미 50e9d0c에서 구현된 activate/deactivate features.json 반영 (passes=true)
+- F-028, F-029, F-030, F-031: 인프라 검증 게이트 이미 통과 중 — features.json 반영
+- F-003: `@vscode/vsce` 추가, package.json 구조 재편 (vscode:prepublish 분리, package 스크립트 업데이트)
+  - npm run package → agent-harness-framework-0.0.1.vsix 생성 확인
+  - publisher: "undefined-publisher", repository URL 추가
+  - README.md 링크 수정 (develop_references → specs)
