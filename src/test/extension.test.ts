@@ -357,6 +357,82 @@ suite('Extension Test Suite', () => {
 		);
 	});
 
+	// F-027: agentType 설정이 VSCode 전역 설정에 저장되고 패널 재오픈 시 복원되는지 검증
+	test('F-027: 에이전트 타입이 패널 재오픈 후에도 복원되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// VSCode 전역 설정에 직접 저장하여 "이전 세션에서 저장된 값" 상태를 시뮬레이션
+		const config = vscode.workspace.getConfiguration('agentHarness');
+		await config.update('agentType', 'gemini', vscode.ConfigurationTarget.Global);
+
+		// 기존 패널 닫기 — VSCode 재시작 시뮬레이션
+		const { AgentSettingsView } = ext.exports;
+		AgentSettingsView.disposeForTest();
+		assert.strictEqual(AgentSettingsView.isOpen(), false, '패널이 닫혀 있어야 합니다.');
+
+		// 새 패널 열기 — VSCode 재시작 후 패널 재오픈 시뮬레이션
+		await vscode.commands.executeCommand('agent-harness-framework.openAgentSettings');
+		assert.strictEqual(AgentSettingsView.isOpen(), true, '새 패널이 열려 있어야 합니다.');
+
+		// HTML에 저장된 agentType이 선택 상태로 렌더링되었는지 확인
+		const html = AgentSettingsView.getHtmlForTest();
+		assert.ok(
+			html.includes('value="gemini" selected'),
+			'gemini 옵션이 selected 상태로 HTML에 포함되어 있어야 합니다.'
+		);
+
+		// 정리: 기본값으로 복원
+		await config.update('agentType', 'claude', vscode.ConfigurationTarget.Global);
+	});
+
+	// F-027: cliPath와 extraArgs 설정이 VSCode 전역 설정에 저장되고 패널 재오픈 시 복원되는지 검증
+	test('F-027: CLI 경로와 추가 플래그가 패널 재오픈 후에도 복원되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// VSCode 전역 설정에 직접 저장하여 "이전 세션에서 저장된 값" 상태를 시뮬레이션
+		const config = vscode.workspace.getConfiguration('agentHarness');
+		const savedCliPath = '/usr/local/bin/claude';
+		const savedExtraArgs = '--verbose --model claude-opus-4-6';
+		await config.update('cliPath', savedCliPath, vscode.ConfigurationTarget.Global);
+		await config.update('extraArgs', savedExtraArgs, vscode.ConfigurationTarget.Global);
+
+		// 기존 패널 닫기 — VSCode 재시작 시뮬레이션
+		const { AgentSettingsView } = ext.exports;
+		AgentSettingsView.disposeForTest();
+		assert.strictEqual(AgentSettingsView.isOpen(), false, '패널이 닫혀 있어야 합니다.');
+
+		// 새 패널 열기 — VSCode 재시작 후 패널 재오픈 시뮬레이션
+		await vscode.commands.executeCommand('agent-harness-framework.openAgentSettings');
+		assert.strictEqual(AgentSettingsView.isOpen(), true, '새 패널이 열려 있어야 합니다.');
+
+		// HTML에 저장된 cliPath와 extraArgs가 렌더링되었는지 확인
+		const html = AgentSettingsView.getHtmlForTest();
+		assert.ok(
+			html.includes(savedCliPath),
+			'저장된 CLI 경로가 HTML에 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			html.includes(savedExtraArgs),
+			'저장된 추가 CLI 플래그가 HTML에 포함되어 있어야 합니다.'
+		);
+
+		// 정리: 기본값으로 복원
+		await config.update('cliPath', '', vscode.ConfigurationTarget.Global);
+		await config.update('extraArgs', '', vscode.ConfigurationTarget.Global);
+	});
+
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
 	test('F-005: inputChanged 메시지 수신 시 입력값이 저장되어야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

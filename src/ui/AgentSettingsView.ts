@@ -208,6 +208,15 @@ export class AgentSettingsView {
 	}
 
 	/**
+	 * 테스트 환경에서 현재 열린 패널을 강제 닫는다.
+	 * VSCode 재시작 시뮬레이션 목적으로만 사용한다.
+	 * 실제 애플리케이션 코드에서는 호출하지 말 것.
+	 */
+	public static disposeForTest(): void {
+		AgentSettingsView.currentPanel?.dispose();
+	}
+
+	/**
 	 * 에이전트 설정 패널을 열거나 이미 열려 있으면 포커스를 이동한다.
 	 *
 	 * @param extensionUri - Extension 루트 디렉토리 URI
