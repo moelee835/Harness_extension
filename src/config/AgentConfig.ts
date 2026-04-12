@@ -15,7 +15,7 @@ const VALID_AGENT_TYPES: AgentType[] = ['claude', 'gemini', 'custom'];
 /**
  * CLI 에이전트 설정을 VSCode workspace configuration을 통해 읽고 쓰는 유틸리티 클래스.
  * F-014: 에이전트 타입 선택 및 저장
- * F-015: CLI 실행 경로 설정 (향후 구현)
+ * F-015: CLI 실행 경로 설정
  * F-016: 추가 CLI 플래그 설정 (향후 구현)
  * F-027: VSCode 세션 간 설정 영속성 — workspace.getConfiguration이 자동으로 보장
  *
@@ -28,8 +28,14 @@ export class AgentConfig {
 	/** agentType 설정 키 */
 	private static readonly KEY_AGENT_TYPE = 'agentType';
 
+	/** cliPath 설정 키 — CLI 실행 파일 경로 */
+	private static readonly KEY_CLI_PATH = 'cliPath';
+
 	/** 기본 에이전트 타입 */
 	public static readonly DEFAULT_AGENT_TYPE: AgentType = 'claude';
+
+	/** 기본 CLI 실행 경로 — 빈 문자열이면 PATH 환경변수에서 자동 탐색 */
+	public static readonly DEFAULT_CLI_PATH = '';
 
 	/**
 	 * 현재 설정된 에이전트 타입을 반환한다.
@@ -60,5 +66,30 @@ export class AgentConfig {
 		const config = vscode.workspace.getConfiguration(AgentConfig.NAMESPACE);
 		// ConfigurationTarget.Global: 전역 설정 파일(settings.json)에 저장 → 세션 간 영속성 보장
 		await config.update(AgentConfig.KEY_AGENT_TYPE, type, vscode.ConfigurationTarget.Global);
+	}
+
+	/**
+	 * 현재 설정된 CLI 실행 경로를 반환한다.
+	 * 설정값이 없으면 빈 문자열(기본값)을 반환한다.
+	 * 빈 문자열인 경우 AgentRunner가 PATH 환경변수에서 CLI를 자동 탐색한다.
+	 *
+	 * @returns CLI 실행 경로 문자열 (미설정 시 빈 문자열)
+	 */
+	public static getCliPath(): string {
+		const config = vscode.workspace.getConfiguration(AgentConfig.NAMESPACE);
+		return config.get<string>(AgentConfig.KEY_CLI_PATH) ?? AgentConfig.DEFAULT_CLI_PATH;
+	}
+
+	/**
+	 * CLI 실행 경로를 VSCode 전역 설정에 저장한다.
+	 * 저장된 값은 VSCode 세션 간 영속적으로 유지된다.
+	 *
+	 * @param cliPath - 저장할 CLI 실행 파일의 절대 경로 (예: /usr/local/bin/claude)
+	 * @returns 설정 저장 완료를 나타내는 Promise
+	 */
+	public static async setCliPath(cliPath: string): Promise<void> {
+		const config = vscode.workspace.getConfiguration(AgentConfig.NAMESPACE);
+		// ConfigurationTarget.Global: 전역 설정 파일(settings.json)에 저장 → 세션 간 영속성 보장
+		await config.update(AgentConfig.KEY_CLI_PATH, cliPath, vscode.ConfigurationTarget.Global);
 	}
 }

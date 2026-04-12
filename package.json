@@ -41,6 +41,11 @@
           "enum": ["claude", "gemini", "custom"],
           "default": "claude",
           "description": "사용할 CLI 에이전트 종류 (Claude Code / Gemini CLI / Custom CLI)"
+        },
+        "agentHarness.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "CLI 에이전트 실행 파일의 절대 경로 (예: /usr/local/bin/claude). 비워두면 PATH 환경변수에서 자동 탐색한다."
         }
       }
     }

@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import type { ExtensionApi } from '../extension.js';
 import type { WebviewMessage } from '../ui/MainPanel.js';
-import type { AgentSettingsMessage } from '../ui/AgentSettingsView.js';
+import type { AgentSettingsMessage, AgentSettingsCliPathMessage } from '../ui/AgentSettingsView.js';
 
 // Extension ID — package.json의 publisher.name 형식
 const EXTENSION_ID = 'undefined-publisher.agent-harness-framework';
@@ -227,6 +227,70 @@ suite('Extension Test Suite', () => {
 		const claudeMessage: AgentSettingsMessage = { type: 'setAgentType', value: 'claude' };
 		AgentSettingsView.simulateWebviewMessage(claudeMessage);
 		assert.strictEqual(AgentSettingsView.getAgentType(), 'claude', 'claude 선택 후 저장되어야 합니다.');
+	});
+
+	// F-015: 에이전트 설정 패널 HTML에 CLI 경로 입력 필드가 포함되어 있는지 검증
+	test('F-015: 에이전트 설정 패널 HTML에 cli-path-input 입력 필드가 있어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 에이전트 설정 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openAgentSettings');
+
+		const { AgentSettingsView } = ext.exports;
+		assert.strictEqual(AgentSettingsView.isOpen(), true, '설정 패널이 열려 있어야 합니다.');
+
+		// 웹뷰 HTML에 CLI 경로 입력 필드가 있는지 확인
+		const html = AgentSettingsView.getHtmlForTest();
+		assert.ok(
+			html.includes('id="cli-path-input"'),
+			'HTML에 id="cli-path-input" 입력 필드가 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			html.includes('type="text"'),
+			'HTML에 type="text" 입력 필드가 포함되어 있어야 합니다.'
+		);
+	});
+
+	// F-015: setCliPath 메시지 수신 시 CLI 경로가 AgentConfig에 저장되는지 검증
+	test('F-015: setCliPath 메시지 수신 시 CLI 경로가 저장되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 에이전트 설정 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openAgentSettings');
+
+		const { AgentSettingsView } = ext.exports;
+		assert.strictEqual(AgentSettingsView.isOpen(), true, '설정 패널이 열려 있어야 합니다.');
+
+		// CLI 경로 변경 메시지 시뮬레이션 — 사용자가 경로를 직접 입력하는 상황 재현
+		const testPath = '/usr/local/bin/claude';
+		const pathMessage: AgentSettingsCliPathMessage = { type: 'setCliPath', value: testPath };
+		AgentSettingsView.simulateWebviewMessage(pathMessage as AgentSettingsMessage);
+		assert.strictEqual(
+			AgentSettingsView.getCliPath(),
+			testPath,
+			'setCliPath 메시지 수신 후 CLI 경로가 저장되어야 합니다.'
+		);
+
+		// 빈 문자열로 초기화 메시지 시뮬레이션
+		const emptyPathMessage: AgentSettingsCliPathMessage = { type: 'setCliPath', value: '' };
+		AgentSettingsView.simulateWebviewMessage(emptyPathMessage as AgentSettingsMessage);
+		assert.strictEqual(
+			AgentSettingsView.getCliPath(),
+			'',
+			'빈 경로로 setCliPath 메시지 수신 후 빈 문자열로 저장되어야 합니다.'
+		);
 	});
 
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증

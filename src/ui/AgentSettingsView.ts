@@ -4,15 +4,32 @@ import * as vscode from 'vscode';
 import { AgentConfig, AgentType } from '../config/AgentConfig.js';
 
 /**
- * 웹뷰에서 Extension으로 전달되는 에이전트 설정 메시지 타입 정의.
- * 사용자가 에이전트 타입을 변경하면 웹뷰 스크립트가 이 형식으로 postMessage를 호출한다.
+ * 웹뷰에서 Extension으로 전달되는 에이전트 타입 변경 메시지.
+ * 사용자가 드롭다운에서 에이전트 타입을 선택하면 웹뷰 스크립트가 이 형식으로 postMessage를 호출한다.
  */
-export interface AgentSettingsMessage {
+export interface AgentSettingsTypeMessage {
 	/** 메시지 종류 식별자 */
 	type: 'setAgentType';
 	/** 선택된 에이전트 타입 */
 	value: AgentType;
 }
+
+/**
+ * 웹뷰에서 Extension으로 전달되는 CLI 경로 변경 메시지.
+ * 사용자가 CLI 경로 입력 필드를 수정하면 웹뷰 스크립트가 이 형식으로 postMessage를 호출한다.
+ */
+export interface AgentSettingsCliPathMessage {
+	/** 메시지 종류 식별자 */
+	type: 'setCliPath';
+	/** 입력된 CLI 실행 파일 경로 */
+	value: string;
+}
+
+/**
+ * 웹뷰에서 Extension으로 전달되는 에이전트 설정 메시지의 유니온 타입.
+ * setAgentType 또는 setCliPath 메시지 중 하나이다.
+ */
+export type AgentSettingsMessage = AgentSettingsTypeMessage | AgentSettingsCliPathMessage;
 
 /**
  * Extension에서 웹뷰로 전달되는 초기 설정 메시지 타입 정의.
@@ -54,6 +71,12 @@ export class AgentSettingsView {
 	private _agentType: AgentType;
 
 	/**
+	 * 웹뷰에서 수신하여 AgentConfig에 저장한 최신 CLI 실행 경로.
+	 * 초기값은 현재 설정된 cliPath로 채워진다.
+	 */
+	private _cliPath: string;
+
+	/**
 	 * AgentSettingsView 생성자 — 외부에서 직접 호출하지 말 것.
 	 * 패널 생성은 반드시 `AgentSettingsView.show()` 정적 메서드를 통해 수행한다.
 	 *
@@ -65,6 +88,8 @@ export class AgentSettingsView {
 		this.extensionUri = extensionUri;
 		// 현재 저장된 에이전트 타입으로 초기화
 		this._agentType = AgentConfig.getAgentType();
+		// 현재 저장된 CLI 경로로 초기화
+		this._cliPath = AgentConfig.getCliPath();
 
 		// Webview 내부 HTML 콘텐츠 렌더링
 		this._update();
@@ -115,6 +140,16 @@ export class AgentSettingsView {
 	 */
 	public static getAgentType(): AgentType {
 		return AgentSettingsView.currentPanel?._agentType ?? AgentConfig.getAgentType();
+	}
+
+	/**
+	 * 현재 저장된 CLI 실행 경로를 반환한다.
+	 * F-015 테스트에서 메시지 수신 후 AgentConfig 저장 여부를 검증하는 데 사용한다.
+	 *
+	 * @returns 현재 CLI 경로 (패널이 없으면 AgentConfig.getCliPath() 값)
+	 */
+	public static getCliPath(): string {
+		return AgentSettingsView.currentPanel?._cliPath ?? AgentConfig.getCliPath();
 	}
 
 	/**
@@ -176,7 +211,8 @@ export class AgentSettingsView {
 
 	/**
 	 * 웹뷰에서 수신한 메시지를 처리한다.
-	 * setAgentType 메시지를 받으면 AgentConfig에 저장하고 내부 상태를 갱신한다.
+	 * setAgentType 메시지: AgentConfig에 에이전트 타입을 저장하고 내부 상태를 갱신한다.
+	 * setCliPath 메시지: AgentConfig에 CLI 경로를 저장하고 내부 상태를 갱신한다.
 	 *
 	 * @param message - 웹뷰에서 전달된 메시지 객체
 	 */
@@ -187,6 +223,13 @@ export class AgentSettingsView {
 			// VSCode 전역 설정에 비동기 저장 — 세션 간 영속성 보장(F-027)
 			AgentConfig.setAgentType(message.value).catch((err: unknown) => {
 				console.error('[AgentHarness] 에이전트 타입 저장 실패:', err);
+			});
+		} else if (message.type === 'setCliPath') {
+			// 내부 상태 갱신 — 즉시 접근 가능한 인메모리 값
+			this._cliPath = message.value;
+			// VSCode 전역 설정에 비동기 저장 — 세션 간 영속성 보장(F-027)
+			AgentConfig.setCliPath(message.value).catch((err: unknown) => {
+				console.error('[AgentHarness] CLI 경로 저장 실패:', err);
 			});
 		}
 	}
@@ -203,6 +246,7 @@ export class AgentSettingsView {
 	 * Webview에 표시할 HTML 문자열을 반환한다.
 	 * VSCode Webview 보안 정책에 따라 nonce 기반 CSP를 적용한다.
 	 * F-014: 에이전트 타입 선택 드롭다운을 포함한다.
+	 * F-015: CLI 실행 경로 입력 필드를 포함한다.
 	 *
 	 * @returns HTML 문자열
 	 */
@@ -211,6 +255,8 @@ export class AgentSettingsView {
 		const nonce = this._getNonce();
 		// 현재 저장된 에이전트 타입 — 선택된 option의 selected 속성에 사용
 		const currentType = this._agentType;
+		// 현재 저장된 CLI 경로 — 입력 필드의 초기값으로 사용 (XSS 방지를 위해 HTML 이스케이프)
+		const currentCliPath = this._escapeHtml(this._cliPath);
 
 		return /* html */`<!DOCTYPE html>
 <html lang="ko">
@@ -268,6 +314,26 @@ export class AgentSettingsView {
 			outline: 1px solid var(--vscode-focusBorder);
 			border-color: var(--vscode-focusBorder);
 		}
+
+		/* CLI 경로 입력 필드 — VSCode 입력 테마 변수 적용 */
+		#cli-path-input {
+			padding: 4px 8px;
+			background-color: var(--vscode-input-background);
+			color: var(--vscode-input-foreground);
+			border: 1px solid var(--vscode-input-border, transparent);
+			font-family: var(--vscode-font-family);
+			font-size: var(--vscode-font-size);
+		}
+
+		#cli-path-input:focus {
+			outline: 1px solid var(--vscode-focusBorder);
+			border-color: var(--vscode-focusBorder);
+		}
+
+		/* 플레이스홀더 텍스트 색상 — VSCode 플레이스홀더 변수 적용 */
+		#cli-path-input::placeholder {
+			color: var(--vscode-input-placeholderForeground);
+		}
 	</style>
 </head>
 <body>
@@ -283,18 +349,51 @@ export class AgentSettingsView {
 		</select>
 	</div>
 
+	<!-- F-015: CLI 실행 경로 입력 폼 -->
+	<div class="form-group">
+		<label for="cli-path-input">CLI 실행 경로</label>
+		<input
+			id="cli-path-input"
+			type="text"
+			value="${currentCliPath}"
+			placeholder="예: /usr/local/bin/claude (비워두면 PATH에서 자동 탐색)"
+		/>
+	</div>
+
 	<script nonce="${nonce}">
 		// VSCode Webview API 초기화 — postMessage, getState, setState 사용 가능
 		const vscode = acquireVsCodeApi();
 		const select = document.getElementById('agent-type-select');
+		const cliPathInput = document.getElementById('cli-path-input');
 
 		// 드롭다운 변경 시 Extension으로 메시지 전송 — AgentConfig에 저장됨
 		select.addEventListener('change', () => {
 			vscode.postMessage({ type: 'setAgentType', value: select.value });
 		});
+
+		// CLI 경로 입력 변경 시 Extension으로 메시지 전송 — AgentConfig에 저장됨
+		// input 이벤트: 키 입력 즉시 반응하여 실시간으로 저장
+		cliPathInput.addEventListener('input', () => {
+			vscode.postMessage({ type: 'setCliPath', value: cliPathInput.value });
+		});
 	</script>
 </body>
 </html>`;
+	}
+
+	/**
+	 * HTML 특수 문자를 이스케이프하여 XSS 공격을 방지한다.
+	 * 웹뷰 HTML 속성값(value="...")에 사용자 입력값을 삽입할 때 반드시 사용해야 한다.
+	 *
+	 * @param text - 이스케이프할 원본 문자열
+	 * @returns HTML 특수 문자가 이스케이프된 안전한 문자열
+	 */
+	private _escapeHtml(text: string): string {
+		return text
+			.replace(/&/g, '&amp;')
+			.replace(/"/g, '&quot;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
 	}
 
 	/**
