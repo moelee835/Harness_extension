@@ -1,16 +1,34 @@
 // VSCode Extension API 가져오기
 import * as vscode from 'vscode';
+// Markdown 변환 서비스 가져오기
+import { MarkdownConverter } from '../service/MarkdownConverter.js';
 
 /**
- * 웹뷰에서 Extension으로 전달되는 메시지 타입 정의.
- * 사용자가 입력 폼에 내용을 입력하면 웹뷰 스크립트가 이 형식으로 postMessage를 호출한다.
+ * 웹뷰에서 Extension으로 전달되는 입력값 변경 메시지.
+ * 사용자가 textarea에 내용을 입력할 때 웹뷰 스크립트가 이 형식으로 postMessage를 호출한다.
  */
-export interface WebviewMessage {
+export interface InputChangedMessage {
 	/** 메시지 종류 식별자 */
 	type: 'inputChanged';
 	/** 변경된 입력값 */
 	value: string;
 }
+
+/**
+ * 웹뷰에서 Extension으로 전달되는 Markdown 변환 요청 메시지.
+ * 사용자가 "Markdown으로 변환" 버튼을 클릭할 때 웹뷰 스크립트가 이 형식으로 postMessage를 호출한다.
+ */
+export interface ConvertRequestedMessage {
+	/** 메시지 종류 식별자 */
+	type: 'convertRequested';
+}
+
+/**
+ * 웹뷰에서 Extension으로 전달되는 메시지 유니온 타입.
+ * F-005: 입력값 변경 메시지
+ * F-006: Markdown 변환 요청 메시지
+ */
+export type WebviewMessage = InputChangedMessage | ConvertRequestedMessage;
 
 /**
  * Agent Harness Framework의 메인 WebviewPanel을 관리하는 클래스.
@@ -42,6 +60,15 @@ export class MainPanel {
 	 * onDidReceiveMessage 핸들러에서 이 필드를 갱신한다.
 	 */
 	private _inputValue: string = '';
+
+	/**
+	 * 사용자가 "Markdown으로 변환" 버튼을 클릭했을 때 MarkdownConverter가 생성한 Markdown 문자열.
+	 * convertRequested 메시지 처리 후 이 필드에 저장되며, 이후 서비스 레이어로 전달된다.
+	 */
+	private _markdownValue: string = '';
+
+	/** Markdown 변환 서비스 인스턴스 — 입력값을 Markdown 형식으로 변환하는 데 사용 */
+	private readonly _markdownConverter: MarkdownConverter = new MarkdownConverter();
 
 	/**
 	 * MainPanel 생성자 — 외부에서 직접 호출하지 말 것.
@@ -103,6 +130,16 @@ export class MainPanel {
 	 */
 	public static getInputValue(): string {
 		return MainPanel.currentPanel?._inputValue ?? '';
+	}
+
+	/**
+	 * 마지막으로 변환된 Markdown 문자열을 반환한다.
+	 * F-006: convertRequested 메시지 처리 후 MarkdownConverter가 생성한 결과를 조회할 때 사용한다.
+	 *
+	 * @returns Markdown 문자열 (아직 변환 요청이 없었거나 패널이 없으면 빈 문자열)
+	 */
+	public static getMarkdownValue(): string {
+		return MainPanel.currentPanel?._markdownValue ?? '';
 	}
 
 	/**
@@ -174,6 +211,10 @@ export class MainPanel {
 		if (message.type === 'inputChanged') {
 			// 사용자 입력값을 Extension 측에 저장
 			this._inputValue = message.value;
+		} else if (message.type === 'convertRequested') {
+			// F-006: 현재 입력값을 Markdown으로 변환하여 저장
+			// MarkdownConverter는 데이터 손실 없이 모든 입력 내용을 Markdown 형식으로 보존한다
+			this._markdownValue = this._markdownConverter.convert(this._inputValue);
 		}
 	}
 
@@ -189,6 +230,7 @@ export class MainPanel {
 	 * Webview에 표시할 HTML 문자열을 반환한다.
 	 * VSCode Webview 보안 정책에 따라 nonce 기반 CSP(Content Security Policy)를 적용한다.
 	 * F-005: 프로젝트 요구사항 텍스트를 입력하는 textarea 폼을 포함한다.
+	 * F-006: Markdown으로 변환 버튼을 포함하여 변환 요청을 Extension에 전달한다.
 	 *
 	 * @returns HTML 문자열
 	 */
@@ -260,6 +302,21 @@ export class MainPanel {
 		#requirement-input::placeholder {
 			color: var(--vscode-input-placeholderForeground);
 		}
+
+		/* Markdown 변환 버튼 — VSCode 버튼 테마 변수 적용 */
+		#convert-to-markdown-btn {
+			padding: 6px 14px;
+			background-color: var(--vscode-button-background);
+			color: var(--vscode-button-foreground);
+			border: none;
+			cursor: pointer;
+			font-family: var(--vscode-font-family);
+			font-size: var(--vscode-font-size);
+		}
+
+		#convert-to-markdown-btn:hover {
+			background-color: var(--vscode-button-hoverBackground);
+		}
 	</style>
 </head>
 <body>
@@ -274,14 +331,23 @@ export class MainPanel {
 		></textarea>
 	</div>
 
+	<!-- F-006: Markdown 변환 버튼 — 클릭 시 현재 입력값을 Markdown으로 변환하도록 Extension에 요청 -->
+	<button id="convert-to-markdown-btn">Markdown으로 변환</button>
+
 	<script nonce="${nonce}">
 		// VSCode Webview API 초기화 — postMessage, getState, setState 사용 가능
 		const vscode = acquireVsCodeApi();
 		const textarea = document.getElementById('requirement-input');
+		const convertBtn = document.getElementById('convert-to-markdown-btn');
 
 		// 입력값 변경 시 Extension으로 메시지 전송 — Extension 측에서 값을 저장함
 		textarea.addEventListener('input', () => {
 			vscode.postMessage({ type: 'inputChanged', value: textarea.value });
+		});
+
+		// 변환 버튼 클릭 시 Extension으로 변환 요청 메시지 전송
+		convertBtn.addEventListener('click', () => {
+			vscode.postMessage({ type: 'convertRequested' });
 		});
 	</script>
 </body>

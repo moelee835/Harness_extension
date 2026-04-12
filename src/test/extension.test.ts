@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import type { ExtensionApi } from '../extension.js';
-import type { WebviewMessage } from '../ui/MainPanel.js';
+import type { WebviewMessage, ConvertRequestedMessage } from '../ui/MainPanel.js';
 import type { AgentSettingsMessage, AgentSettingsCliPathMessage, AgentSettingsExtraArgsMessage } from '../ui/AgentSettingsView.js';
 
 // Extension ID — package.json의 publisher.name 형식
@@ -433,6 +433,75 @@ suite('Extension Test Suite', () => {
 		await config.update('extraArgs', '', vscode.ConfigurationTarget.Global);
 	});
 
+	// F-006: 메인 패널 HTML에 Markdown 변환 버튼이 포함되어 있는지 검증
+	test('F-006: 메인 패널 HTML에 convert-to-markdown-btn 버튼이 있어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 웹뷰 HTML에 Markdown 변환 버튼이 있는지 확인
+		const html = MainPanel.getHtmlForTest();
+		assert.ok(
+			html.includes('id="convert-to-markdown-btn"'),
+			'HTML에 id="convert-to-markdown-btn" 버튼이 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			html.includes('<button'),
+			'HTML에 <button> 요소가 포함되어 있어야 합니다.'
+		);
+	});
+
+	// F-006: convertRequested 메시지 수신 시 입력값이 Markdown으로 변환되어 저장되는지 검증
+	test('F-006: convertRequested 메시지 수신 시 Markdown으로 변환되어 저장되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 사용자 입력 시뮬레이션 — textarea에 요구사항 텍스트 입력
+		const testInput = '사용자 인증 기능을 가진 웹 애플리케이션을 만들어 주세요.';
+		const inputMessage: WebviewMessage = { type: 'inputChanged', value: testInput };
+		MainPanel.simulateWebviewMessage(inputMessage);
+
+		// Markdown 변환 요청 시뮬레이션 — "Markdown으로 변환" 버튼 클릭 상황 재현
+		const convertMessage: ConvertRequestedMessage = { type: 'convertRequested' };
+		MainPanel.simulateWebviewMessage(convertMessage);
+
+		// 변환된 Markdown 값 검증
+		const markdown = MainPanel.getMarkdownValue();
+
+		// Markdown 헤딩이 포함되어 있는지 확인
+		assert.ok(
+			markdown.includes('# 프로젝트 요구사항'),
+			'변환된 Markdown에 "# 프로젝트 요구사항" 헤딩이 포함되어 있어야 합니다.'
+		);
+
+		// 데이터 손실 없이 입력 내용이 그대로 보존되는지 확인
+		assert.ok(
+			markdown.includes(testInput),
+			'변환된 Markdown에 원본 입력 내용이 그대로 포함되어 있어야 합니다.'
+		);
+	});
+
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
 	test('F-005: inputChanged 메시지 수신 시 입력값이 저장되어야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득
@@ -449,8 +518,11 @@ suite('Extension Test Suite', () => {
 		const { MainPanel } = ext.exports;
 		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
 
-		// 초기 입력값은 빈 문자열이어야 한다
-		assert.strictEqual(MainPanel.getInputValue(), '', '초기 입력값은 빈 문자열이어야 합니다.');
+		// 이전 테스트에서 설정된 값을 초기화하여 독립적인 테스트 환경 보장
+		MainPanel.simulateWebviewMessage({ type: 'inputChanged', value: '' });
+
+		// 초기화 후 입력값은 빈 문자열이어야 한다
+		assert.strictEqual(MainPanel.getInputValue(), '', '입력값 초기화 후 빈 문자열이어야 합니다.');
 
 		// 웹뷰 메시지 수신을 시뮬레이션 — 사용자가 textarea에 입력하는 상황을 재현
 		const testInput = '사용자 인증 기능을 가진 웹 애플리케이션을 만들어 주세요.';
