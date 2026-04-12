@@ -7,8 +7,8 @@ Claude Code의 작업 메모리 파일입니다. 세션이 시작될 때 읽고,
 ## Current State
 
 - Project initialized: 2026-04-07
-- Last session: 2026-04-07
-- Status: Claude Code 하네스 초기화 완료, CLAUDE.md 프로젝트 정보 작성 완료
+- Last session: 2026-04-12
+- Status: Ralph Loop 하네스 커맨드 정비 완료. VSCode Extension 본격 구현 대기 중.
 - GitHub remote: https://github.com/moelee835/Harness_extension.git (main 브랜치)
 
 ## Recent Decisions
@@ -49,4 +49,17 @@ Claude Code의 작업 메모리 파일입니다. 세션이 시작될 때 읽고,
 - 2026-04-07: `/enhance-claude-md` 실행 — Tech Stack(버전 상세), Team Conventions(ESLint 규칙/빌드/테스트), Key Rules(VSCode Extension 필수 규칙) 항목 보완
 - 2026-04-07: CLAUDE.md Architecture 섹션 보강 — 레이어 다이어그램, 데이터 흐름(Init 액션), 구현 vs 계획 상태 표, 주요 파일 표, VSCode 브릿지 포인트 추가
 - 2026-04-07: `.claude/commands/enhance_claude_md.md` 보강 — Architecture 분석 sub-steps(a~g) 및 출력 형식(레이어 다이어그램+데이터흐름+Key Files+Planned vs Actual) 명세 추가
-- 2026-04-08: `develop_references/features.json` 생성 — CLAUDE.md 기반 29개 기능 항목 추출 (F-001~F-029, functional/infrastructure 카테고리)
+- 2026-04-08: `develop_references/features.json` 생성 → 이후 `specs/features.json`으로 이동. CLAUDE.md 기반 29개 기능 항목 (F-001~F-029, functional/infrastructure)
+- 2026-04-12: `develop_references/` 디렉토리 삭제 — feature_extraction.md, features.json을 `specs/`로 이동
+- 2026-04-12: `.claude/external_knowledges/ralph_longterm_combined.md` 추가 — Anthropic 장기 에이전트 패턴 × Ralph Loop 방법론 통합 설계 문서
+- 2026-04-12: `.claude/loops/auto_coding_loop.md` 추가 — 자동 코딩 루프 정의 파일
+- 2026-04-12: `.claude/ADR.md` 추가 — 아키텍처 결정 기록 파일
+- 2026-04-12: `.claude/commands/synch_with_ADR.md` 추가 — ADR.md 기반 CLAUDE.md 동기화 커맨드
+- 2026-04-12: `.claude/commands/configure_loop.md` 작성 및 개선 — ralph_longterm_combined.md 필수 선행 독해, 기술 스택 조사 Step 추가, features.json 생성 지시 완전 제거, specs/features.json 전제 조건 명시
+- 2026-04-12: `.claude/commands/extract_features_json.md` 신규 작성 — 요구사항 문서 → E2E 사용자 시나리오 단위 기능 추출 → specs/features.json 생성/추가. configure_loop의 선행 커맨드
+
+## Command 실행 순서 (Ralph Loop 워크플로)
+
+1. `/extract_features_json` — 요구사항 분석 후 specs/features.json 생성
+2. `/configure_loop` — AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_build.md, loop.sh 생성
+3. `bash loop.sh` — Coding Agent 반복 실행 시작
