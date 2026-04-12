@@ -213,7 +213,8 @@
       "Trigger an agent action",
       "Verify the extra flags are appended to the child_process.spawn args array"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "b4913fae95f595d1df5aa36929fd523bf242bbe3"
   },
   {
     "id": "F-017",

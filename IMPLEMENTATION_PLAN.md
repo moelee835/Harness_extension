@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 12개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-014, F-015, F-028, F-029, F-030, F-031, F-032)
-- 마지막 커밋: 965745e feat(F-015): CLI 실행 경로 설정 UI 구현
+- 완료된 기능: 13개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-014, F-015, F-016, F-028, F-029, F-030, F-031, F-032)
+- 마지막 커밋: b4913fa feat(F-016): 추가 CLI 플래그 설정 UI 구현
 
 ## 다음 우선 작업
 
@@ -22,7 +22,7 @@
 - [x] F-005: User can input project requirement data through the main panel form (category: functional) — fa0d125
 - [x] F-014: User can select the CLI agent type in settings (category: functional) — d755581
 - [x] F-015: User can set the CLI executable path in agent settings (category: functional) — 965745e
-- [ ] F-016: User can set extra CLI flags in agent settings (category: functional)
+- [x] F-016: User can set extra CLI flags in agent settings (category: functional) — b4913fa
 - [ ] F-027: Agent settings are persisted across VSCode sessions (category: functional)
 - [ ] F-006: User input data is converted to Markdown format for agent consumption (category: functional)
 - [ ] F-017: AgentRunnerFactory returns ClaudeCodeRunner when agentType is 'claude' (category: functional)
@@ -81,6 +81,15 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 7 (Coding Agent)
+
+- F-016: 추가 CLI 플래그 설정 UI 구현
+  - src/config/AgentConfig.ts: KEY_EXTRA_ARGS, DEFAULT_EXTRA_ARGS 상수 추가, getExtraArgs()/setExtraArgs() 메서드 추가
+  - src/ui/AgentSettingsView.ts: AgentSettingsExtraArgsMessage 인터페이스 추가, AgentSettingsMessage 유니온 타입 확장, _extraArgs 필드, getExtraArgs() 정적 메서드, _processMessage에 setExtraArgs 처리, HTML에 id="extra-args-input" textarea, 웹뷰 스크립트에 input 이벤트 핸들러 추가
+  - package.json: agentHarness.extraArgs 설정 스키마 추가
+  - src/test/extension.test.ts: F-016 테스트 2건 추가
+  - 15 passing (F-001×2, F-002×1, F-004×2, F-032×1, F-005×2, F-014×3, F-015×2, F-016×2)
 
 ### 2026-04-13 — Ralph Loop 세션 6 (Coding Agent)
 
