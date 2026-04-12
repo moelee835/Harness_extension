@@ -50,7 +50,8 @@
       "Verify the panel title is correct",
       "Verify the panel renders without errors"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "14d81a5"
   },
   {
     "id": "F-005",

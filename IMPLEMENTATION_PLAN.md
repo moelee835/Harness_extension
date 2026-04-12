@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 7개 / 전체 34개 (F-001, F-002, F-003, F-028, F-029, F-030, F-031)
-- 마지막 커밋: 1dbfc87 feat(F-003): .vsix 패키징 기능 구현
+- 완료된 기능: 8개 / 전체 34개 (F-001, F-002, F-003, F-004, F-028, F-029, F-030, F-031)
+- 마지막 커밋: 14d81a5 feat(F-004): 메인 WebviewPanel 구현 — 기본 명령으로 패널 열기
 
 ## 다음 우선 작업
 
@@ -17,7 +17,7 @@
 - [x] F-030: esbuild가 src/extension.ts를 dist/extension.js로 오류 없이 번들링한다 (category: infrastructure, priority: 1) — 50e9d0c
 - [x] F-031: npm test (Mocha + @vscode/test-cli)가 오류 없이 통과된다 (category: infrastructure, priority: 2) — 50e9d0c
 - [x] F-003: Extension can be packaged as a .vsix file (category: infrastructure) — 1dbfc87
-- [ ] F-004: Main panel opens when the extension's primary command is executed (category: functional)
+- [x] F-004: Main panel opens when the extension's primary command is executed (category: functional) — 14d81a5
 - [ ] F-032: 이미 열린 메인 패널이 있을 때 명령을 재실행하면 새 패널이 열리지 않고 기존 패널이 포커스된다 (category: functional, priority: 3)
 - [ ] F-005: User can input project requirement data through the main panel form (category: functional)
 - [ ] F-014: User can select the CLI agent type in settings (category: functional)
@@ -81,6 +81,14 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 2 (Coding Agent)
+
+- F-004: src/ui/MainPanel.ts 신규 생성 — WebviewPanel 라이프사이클 관리 클래스 (CSP nonce, 싱글톤 패턴)
+  - package.json에 agent-harness-framework.openMainPanel 명령 추가
+  - src/extension.ts에 openMainPanel 명령 등록 및 subscriptions.push()
+  - src/test/extension.test.ts에 F-004 테스트 2건 추가
+  - 5 passing (F-001×2, F-002×1, F-004×2)
 
 ### 2026-04-13 — Ralph Loop 세션 1 (Coding Agent)
 
