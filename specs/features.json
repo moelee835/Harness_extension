@@ -352,7 +352,8 @@
       "Open the Agent Settings view again",
       "Verify all three settings are pre-populated with the previously saved values"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "379290d1b831106a2c07918a3011a8e703758d91"
   },
   {
     "id": "F-028",

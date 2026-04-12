@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 13개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-014, F-015, F-016, F-028, F-029, F-030, F-031, F-032)
-- 마지막 커밋: b4913fa feat(F-016): 추가 CLI 플래그 설정 UI 구현
+- 완료된 기능: 14개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-014, F-015, F-016, F-027, F-028, F-029, F-030, F-031, F-032)
+- 마지막 커밋: 379290d feat(F-027): 에이전트 설정 VSCode 세션 간 영속성 검증 구현
 
 ## 다음 우선 작업
 
@@ -23,7 +23,7 @@
 - [x] F-014: User can select the CLI agent type in settings (category: functional) — d755581
 - [x] F-015: User can set the CLI executable path in agent settings (category: functional) — 965745e
 - [x] F-016: User can set extra CLI flags in agent settings (category: functional) — b4913fa
-- [ ] F-027: Agent settings are persisted across VSCode sessions (category: functional)
+- [x] F-027: Agent settings are persisted across VSCode sessions (category: functional) — 379290d
 - [ ] F-006: User input data is converted to Markdown format for agent consumption (category: functional)
 - [ ] F-017: AgentRunnerFactory returns ClaudeCodeRunner when agentType is 'claude' (category: functional)
 - [ ] F-018: AgentRunnerFactory returns GeminiCliRunner when agentType is 'gemini' (category: functional)
@@ -81,6 +81,16 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 8 (Coding Agent)
+
+- F-027: 에이전트 설정 VSCode 세션 간 영속성 검증
+  - src/ui/AgentSettingsView.ts: disposeForTest() 정적 메서드 추가 (패널 강제 닫기, 재시작 시뮬레이션용)
+  - src/test/extension.test.ts: F-027 테스트 2건 추가
+    - agentType=gemini 저장 → 패널 닫기 → 재오픈 → HTML에 gemini selected 확인
+    - cliPath, extraArgs 저장 → 패널 닫기 → 재오픈 → HTML에 값 반영 확인
+  - AgentConfig는 이미 ConfigurationTarget.Global로 저장 중이므로 영속성 로직 신규 구현 없음
+  - 17 passing (기존 15 + F-027 2건 추가)
 
 ### 2026-04-13 — Ralph Loop 세션 7 (Coding Agent)
 
