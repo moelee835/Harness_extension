@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 14개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-014, F-015, F-016, F-027, F-028, F-029, F-030, F-031, F-032)
-- 마지막 커밋: 379290d feat(F-027): 에이전트 설정 VSCode 세션 간 영속성 검증 구현
+- 완료된 기능: 15개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-027, F-028, F-029, F-030, F-031, F-032)
+- 마지막 커밋: c185362 feat(F-006): 사용자 입력 데이터 Markdown 변환 기능 구현
 
 ## 다음 우선 작업
 
@@ -24,7 +24,7 @@
 - [x] F-015: User can set the CLI executable path in agent settings (category: functional) — 965745e
 - [x] F-016: User can set extra CLI flags in agent settings (category: functional) — b4913fa
 - [x] F-027: Agent settings are persisted across VSCode sessions (category: functional) — 379290d
-- [ ] F-006: User input data is converted to Markdown format for agent consumption (category: functional)
+- [x] F-006: User input data is converted to Markdown format for agent consumption (category: functional) — c185362
 - [ ] F-017: AgentRunnerFactory returns ClaudeCodeRunner when agentType is 'claude' (category: functional)
 - [ ] F-018: AgentRunnerFactory returns GeminiCliRunner when agentType is 'gemini' (category: functional)
 - [ ] F-019: AgentRunnerFactory returns CustomCliRunner when agentType is 'custom' (category: functional)
@@ -81,6 +81,14 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 9 (Coding Agent)
+
+- F-006: 사용자 입력 데이터 Markdown 변환 기능 구현
+  - src/service/MarkdownConverter.ts 신규 생성 — 순수 TypeScript 서비스 클래스 (VSCode API 미의존)
+  - src/ui/MainPanel.ts — WebviewMessage 유니온 타입 확장 (ConvertRequestedMessage 추가), _markdownValue 필드, getMarkdownValue() 정적 메서드, convertRequested 메시지 처리, HTML에 convert-to-markdown-btn 버튼 추가
+  - src/test/extension.test.ts — F-006 테스트 2건 추가, F-005 inputChanged 테스트에 상태 초기화 추가
+  - 19 passing (기존 17 + F-006 2건 추가)
 
 ### 2026-04-13 — Ralph Loop 세션 8 (Coding Agent)
 

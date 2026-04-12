@@ -78,7 +78,8 @@
       "Verify the converted Markdown is displayed or made available to the next step",
       "Verify no data is lost during conversion"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "c185362c580c70c959ecdda2d8d1d17ec78e34b6"
   },
   {
     "id": "F-007",
