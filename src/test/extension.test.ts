@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 // Extension ID — package.json의 publisher.name 형식
-const EXTENSION_ID = 'undefined_publisher.agent-harness-framework';
+const EXTENSION_ID = 'undefined-publisher.agent-harness-framework';
 
 suite('Extension Test Suite', () => {
 

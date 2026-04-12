@@ -98,7 +98,7 @@ npm run package
 | `src/config/` | 개발 예정 |
 | `src/persistence/` | 개발 예정 |
 
-기능 요구사항은 [`develop_references/features.json`](develop_references/features.json)에서 관리합니다. (총 29개 항목)
+기능 요구사항은 [`specs/features.json`](specs/features.json)에서 관리합니다. (총 34개 항목)
 
 ---
 
