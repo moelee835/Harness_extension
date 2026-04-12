@@ -9,7 +9,8 @@
       "Check the Output panel shows no activation errors",
       "Verify all commands declared in package.json contributes.commands are registered"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "50e9d0c"
   },
   {
     "id": "F-002",
@@ -21,7 +22,8 @@
       "Verify deactivate() is called without errors",
       "Verify no memory leaks — all context.subscriptions items are disposed"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "50e9d0c"
   },
   {
     "id": "F-003",
@@ -355,7 +357,8 @@
       "Verify the command exits with code 0",
       "Verify no TypeScript errors are printed to stdout or stderr"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "50e9d0c"
   },
   {
     "id": "F-029",
@@ -366,7 +369,8 @@
       "Verify the command exits with code 0",
       "Verify no ESLint errors or warnings are printed"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "50e9d0c"
   },
   {
     "id": "F-030",
@@ -380,8 +384,8 @@
       "생성된 dist/extension.js가 CJS 포맷이며 vscode 모듈이 번들에 포함되지 않았는지 확인한다",
       "콘솔에 번들링 에러가 없는지 확인한다"
     ],
-    "passes": false,
-    "implemented_in_commit": null,
+    "passes": true,
+    "implemented_in_commit": "50e9d0c",
     "notes": ""
   },
   {
@@ -396,8 +400,8 @@
       "모든 테스트가 통과하는지 확인한다",
       "테스트 실패 시 에러 메시지와 스택 트레이스가 출력되는지 확인한다"
     ],
-    "passes": false,
-    "implemented_in_commit": null,
+    "passes": true,
+    "implemented_in_commit": "50e9d0c",
     "notes": ""
   },
   {
