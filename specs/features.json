@@ -418,8 +418,8 @@
       "새로운 패널이 생성되지 않고 기존 패널이 활성화되는지 확인한다",
       "패널이 이전에 표시한 콘텐츠를 유지하는지 확인한다"
     ],
-    "passes": false,
-    "implemented_in_commit": null,
+    "passes": true,
+    "implemented_in_commit": "27f63130c84bf43b1e3f54f5a79e5b78149330be",
     "notes": ""
   },
   {
