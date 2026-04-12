@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import type { ExtensionApi } from '../extension.js';
 
 // Extension ID — package.json의 publisher.name 형식
 const EXTENSION_ID = 'undefined-publisher.agent-harness-framework';
@@ -82,6 +83,36 @@ suite('Extension Test Suite', () => {
 			errorThrown = true;
 		}
 		assert.strictEqual(errorThrown, false, 'openMainPanel 명령 실행 중 예외가 발생했습니다.');
+	});
+
+	// F-032: 이미 열린 패널이 있을 때 명령을 재실행하면 기존 패널이 포커스되고 새 패널이 생성되지 않는지 검증
+	test('F-032: openMainPanel 명령 재실행 시 기존 패널이 포커스되고 새 패널이 생성되지 않아야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// ext.exports.MainPanel은 Extension 번들 내 MainPanel 클래스 — 싱글톤 상태 공유
+		const { MainPanel } = ext.exports;
+
+		// 첫 번째 명령 실행 — 패널이 열려야 한다
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+		assert.strictEqual(MainPanel.isOpen(), true, '첫 번째 명령 실행 후 패널이 열려 있어야 합니다.');
+
+		// 두 번째 명령 실행 — 기존 패널을 포커스해야 하며 예외가 발생해서는 안 된다
+		let errorThrown = false;
+		try {
+			await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+		} catch {
+			errorThrown = true;
+		}
+		assert.strictEqual(errorThrown, false, '두 번째 openMainPanel 명령 실행 중 예외가 발생했습니다.');
+
+		// 두 번째 실행 후에도 패널이 여전히 열려 있어야 한다 (새 패널 생성이 아니라 기존 패널 유지)
+		assert.strictEqual(MainPanel.isOpen(), true, '두 번째 명령 실행 후에도 패널이 열려 있어야 합니다.');
 	});
 
 });

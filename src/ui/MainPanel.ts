@@ -58,6 +58,16 @@ export class MainPanel {
 	}
 
 	/**
+	 * 현재 메인 패널이 열려 있는지 여부를 반환한다.
+	 * F-032 테스트에서 싱글톤 동작을 검증하는 데 사용한다.
+	 *
+	 * @returns 패널이 열려 있으면 true, 닫혀 있으면 false
+	 */
+	public static isOpen(): boolean {
+		return MainPanel.currentPanel !== undefined;
+	}
+
+	/**
 	 * 메인 패널을 열거나 이미 열려 있으면 포커스를 이동한다.
 	 * F-004: 명령 실행 시 WebviewPanel이 열리는 진입점.
 	 * F-032: 이미 열린 패널이 있는 경우 새 패널을 생성하지 않고 기존 패널을 활성화한다.

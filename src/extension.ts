@@ -3,6 +3,12 @@ import * as vscode from 'vscode';
 // 메인 패널 UI 클래스 가져오기
 import { MainPanel } from './ui/MainPanel.js';
 
+/** Extension activate() 반환 타입 — 테스트에서 내부 상태 접근 시 사용 */
+export interface ExtensionApi {
+	/** 테스트에서 MainPanel 싱글톤 상태를 검증하기 위해 노출하는 클래스 참조 */
+	MainPanel: typeof MainPanel;
+}
+
 /**
  * Extension 활성화 진입점.
  * VSCode가 워크스페이스를 열고 onStartupFinished 이벤트가 발생할 때 호출된다.
@@ -10,8 +16,9 @@ import { MainPanel } from './ui/MainPanel.js';
  * 등록한 disposable은 반드시 context.subscriptions에 추가하여 메모리 누수를 방지한다.
  *
  * @param context - VSCode가 제공하는 Extension 컨텍스트 객체
+ * @returns ExtensionApi — 테스트에서 내부 모듈에 접근하기 위한 공개 인터페이스
  */
-export function activate(context: vscode.ExtensionContext): void {
+export function activate(context: vscode.ExtensionContext): ExtensionApi {
 	// 활성화 성공 로그 출력 (Output 패널에서 확인 가능)
 	console.log('[AgentHarness] Extension이 활성화되었습니다.');
 
@@ -36,6 +43,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	// 등록한 모든 disposable을 subscriptions에 추가하여 Extension 비활성화 시 자동 해제
 	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable);
+
+	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.MainPanel 형태로 접근 가능
+	return { MainPanel };
 }
 
 /**
