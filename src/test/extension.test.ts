@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import type { ExtensionApi } from '../extension.js';
+import type { WebviewMessage } from '../ui/MainPanel.js';
 
 // Extension ID — package.json의 publisher.name 형식
 const EXTENSION_ID = 'undefined-publisher.agent-harness-framework';
@@ -113,6 +114,66 @@ suite('Extension Test Suite', () => {
 
 		// 두 번째 실행 후에도 패널이 여전히 열려 있어야 한다 (새 패널 생성이 아니라 기존 패널 유지)
 		assert.strictEqual(MainPanel.isOpen(), true, '두 번째 명령 실행 후에도 패널이 열려 있어야 합니다.');
+	});
+
+	// F-005: 메인 패널 HTML에 프로젝트 요구사항 입력 textarea가 포함되어 있는지 검증
+	test('F-005: 메인 패널 HTML에 requirement-input textarea가 있어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널이 아직 열려 있지 않으면 명령으로 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 웹뷰 HTML에 요구사항 입력 textarea가 있는지 확인
+		const html = MainPanel.getHtmlForTest();
+		assert.ok(
+			html.includes('id="requirement-input"'),
+			'HTML에 id="requirement-input" textarea가 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			html.includes('<textarea'),
+			'HTML에 <textarea> 요소가 포함되어 있어야 합니다.'
+		);
+	});
+
+	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
+	test('F-005: inputChanged 메시지 수신 시 입력값이 저장되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 초기 입력값은 빈 문자열이어야 한다
+		assert.strictEqual(MainPanel.getInputValue(), '', '초기 입력값은 빈 문자열이어야 합니다.');
+
+		// 웹뷰 메시지 수신을 시뮬레이션 — 사용자가 textarea에 입력하는 상황을 재현
+		const testInput = '사용자 인증 기능을 가진 웹 애플리케이션을 만들어 주세요.';
+		const message: WebviewMessage = { type: 'inputChanged', value: testInput };
+		MainPanel.simulateWebviewMessage(message);
+
+		// 메시지 수신 후 입력값이 저장되었는지 확인
+		assert.strictEqual(
+			MainPanel.getInputValue(),
+			testInput,
+			'inputChanged 메시지 수신 후 입력값이 저장되어야 합니다.'
+		);
 	});
 
 });
