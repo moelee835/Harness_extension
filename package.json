@@ -27,8 +27,23 @@
       {
         "command": "agent-harness-framework.openMainPanel",
         "title": "Agent Harness: 메인 패널 열기"
+      },
+      {
+        "command": "agent-harness-framework.openAgentSettings",
+        "title": "Agent Harness: 에이전트 설정 열기"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Agent Harness Framework",
+      "properties": {
+        "agentHarness.agentType": {
+          "type": "string",
+          "enum": ["claude", "gemini", "custom"],
+          "default": "claude",
+          "description": "사용할 CLI 에이전트 종류 (Claude Code / Gemini CLI / Custom CLI)"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "node esbuild.js --production",

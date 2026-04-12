@@ -2,11 +2,15 @@
 import * as vscode from 'vscode';
 // 메인 패널 UI 클래스 가져오기
 import { MainPanel } from './ui/MainPanel.js';
+// 에이전트 설정 패널 UI 클래스 가져오기
+import { AgentSettingsView } from './ui/AgentSettingsView.js';
 
 /** Extension activate() 반환 타입 — 테스트에서 내부 상태 접근 시 사용 */
 export interface ExtensionApi {
 	/** 테스트에서 MainPanel 싱글톤 상태를 검증하기 위해 노출하는 클래스 참조 */
 	MainPanel: typeof MainPanel;
+	/** 테스트에서 AgentSettingsView 싱글톤 상태를 검증하기 위해 노출하는 클래스 참조 */
+	AgentSettingsView: typeof AgentSettingsView;
 }
 
 /**
@@ -41,11 +45,21 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 		}
 	);
 
-	// 등록한 모든 disposable을 subscriptions에 추가하여 Extension 비활성화 시 자동 해제
-	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable);
+	// openAgentSettings 명령 등록 — F-014: 에이전트 설정 패널 열기
+	// package.json의 contributes.commands에 선언된 ID와 반드시 일치해야 함
+	const openAgentSettingsDisposable = vscode.commands.registerCommand(
+		'agent-harness-framework.openAgentSettings',
+		() => {
+			// AgentSettingsView.show()를 호출하여 설정 패널을 열거나 기존 패널에 포커스 이동
+			AgentSettingsView.show(context.extensionUri);
+		}
+	);
 
-	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.MainPanel 형태로 접근 가능
-	return { MainPanel };
+	// 등록한 모든 disposable을 subscriptions에 추가하여 Extension 비활성화 시 자동 해제
+	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable, openAgentSettingsDisposable);
+
+	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.AgentSettingsView 형태로 접근 가능
+	return { MainPanel, AgentSettingsView };
 }
 
 /**

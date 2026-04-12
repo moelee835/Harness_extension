@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import type { ExtensionApi } from '../extension.js';
 import type { WebviewMessage } from '../ui/MainPanel.js';
+import type { AgentSettingsMessage } from '../ui/AgentSettingsView.js';
 
 // Extension ID — package.json의 publisher.name 형식
 const EXTENSION_ID = 'undefined-publisher.agent-harness-framework';
@@ -142,6 +143,90 @@ suite('Extension Test Suite', () => {
 			html.includes('<textarea'),
 			'HTML에 <textarea> 요소가 포함되어 있어야 합니다.'
 		);
+	});
+
+	// F-014: 에이전트 설정 패널 열기 명령이 등록되어 있는지 검증
+	test('F-014: openAgentSettings 명령이 등록되어야 한다', async () => {
+		// Extension 활성화 확인
+		const ext = vscode.extensions.getExtension(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// VSCode 명령 목록에서 openAgentSettings 명령 존재 여부 확인
+		const commands = await vscode.commands.getCommands(true);
+		const hasOpenAgentSettings = commands.includes('agent-harness-framework.openAgentSettings');
+		assert.strictEqual(hasOpenAgentSettings, true, 'openAgentSettings 명령이 등록되지 않았습니다.');
+	});
+
+	// F-014: 에이전트 설정 패널 HTML에 에이전트 타입 선택 드롭다운이 포함되어 있는지 검증
+	test('F-014: 에이전트 설정 패널 HTML에 agent-type-select 드롭다운이 있어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 에이전트 설정 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openAgentSettings');
+
+		const { AgentSettingsView } = ext.exports;
+		assert.strictEqual(AgentSettingsView.isOpen(), true, '설정 패널이 열려 있어야 합니다.');
+
+		// 웹뷰 HTML에 에이전트 타입 선택 드롭다운이 있는지 확인
+		const html = AgentSettingsView.getHtmlForTest();
+		assert.ok(
+			html.includes('id="agent-type-select"'),
+			'HTML에 id="agent-type-select" 드롭다운이 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			html.includes('value="claude"'),
+			'HTML에 claude 옵션이 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			html.includes('value="gemini"'),
+			'HTML에 gemini 옵션이 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			html.includes('value="custom"'),
+			'HTML에 custom 옵션이 포함되어 있어야 합니다.'
+		);
+	});
+
+	// F-014: setAgentType 메시지 수신 시 각 에이전트 타입이 AgentConfig에 저장되는지 검증
+	test('F-014: setAgentType 메시지 수신 시 에이전트 타입이 저장되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 에이전트 설정 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openAgentSettings');
+
+		const { AgentSettingsView } = ext.exports;
+		assert.strictEqual(AgentSettingsView.isOpen(), true, '설정 패널이 열려 있어야 합니다.');
+
+		// Gemini 선택 메시지 시뮬레이션
+		const geminiMessage: AgentSettingsMessage = { type: 'setAgentType', value: 'gemini' };
+		AgentSettingsView.simulateWebviewMessage(geminiMessage);
+		assert.strictEqual(AgentSettingsView.getAgentType(), 'gemini', 'gemini 선택 후 저장되어야 합니다.');
+
+		// Custom 선택 메시지 시뮬레이션
+		const customMessage: AgentSettingsMessage = { type: 'setAgentType', value: 'custom' };
+		AgentSettingsView.simulateWebviewMessage(customMessage);
+		assert.strictEqual(AgentSettingsView.getAgentType(), 'custom', 'custom 선택 후 저장되어야 합니다.');
+
+		// Claude 선택 메시지 시뮬레이션 (기본값으로 복원)
+		const claudeMessage: AgentSettingsMessage = { type: 'setAgentType', value: 'claude' };
+		AgentSettingsView.simulateWebviewMessage(claudeMessage);
+		assert.strictEqual(AgentSettingsView.getAgentType(), 'claude', 'claude 선택 후 저장되어야 합니다.');
 	});
 
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
