@@ -57,6 +57,9 @@ Claude Code의 작업 메모리 파일입니다. 세션이 시작될 때 읽고,
 - 2026-04-12: `.claude/commands/synch_with_ADR.md` 추가 — ADR.md 기반 CLAUDE.md 동기화 커맨드
 - 2026-04-12: `.claude/commands/configure_loop.md` 작성 및 개선 — ralph_longterm_combined.md 필수 선행 독해, 기술 스택 조사 Step 추가, features.json 생성 지시 완전 제거, specs/features.json 전제 조건 명시
 - 2026-04-12: `.claude/commands/extract_features_json.md` 신규 작성 — 요구사항 문서 → E2E 사용자 시나리오 단위 기능 추출 → specs/features.json 생성/추가. configure_loop의 선행 커맨드
+- 2026-04-12: `specs/features.json` 갱신 — F-030~F-034 신규 추가 (esbuild 번들링, npm test, 패널 포커스, 에이전트 오류 표시, 에이전트 취소). 기존 F-001~F-029는 변경 없음. 전체 34개 항목
+- 2026-04-12: Ralph Loop 하네스 파일 생성 — AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh 모두 신규 생성. 구현 순서 가이드: 인프라(F-001~F-003, F-028~F-031) → UI 진입점(F-004, F-032) → 설정(F-005, F-014~F-016, F-027) → 서비스 코어(F-006~F-007, F-017~F-020, F-033~F-034) → 주요 기능(F-008~F-013) → 영속성(F-021~F-026)
+- 2026-04-12: `vibe_context/init-claude-project.md` 대폭 갱신 — 현재 `.claude/` 하위 모든 요소 생성 보장. 추가된 섹션: `.claude/ADR.md`, `.claude/commands/configure_loop.md` (verbatim), `.claude/commands/extract_features_json.md` (verbatim), `.claude/commands/synch_with_ADR.md` (verbatim), `.claude/external_knowledges/ralph_longterm_combined.md` (verbatim), `.claude/loops/auto_coding_loop.md`. CLAUDE.md 템플릿 Slash Commands 3개 추가. Final Step git add 경로 갱신. 387줄 → 1328줄.
 
 ## Command 실행 순서 (Ralph Loop 워크플로)
 

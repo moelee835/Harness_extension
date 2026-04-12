@@ -367,5 +367,87 @@
       "Verify no ESLint errors or warnings are printed"
     ],
     "passes": false
+  },
+  {
+    "id": "F-030",
+    "category": "infrastructure",
+    "priority": 1,
+    "description": "esbuild가 src/extension.ts를 dist/extension.js로 오류 없이 번들링한다",
+    "steps": [
+      "npm run compile 명령을 실행한다",
+      "명령이 종료 코드 0으로 완료되는지 확인한다",
+      "dist/extension.js 파일이 생성되었는지 확인한다",
+      "생성된 dist/extension.js가 CJS 포맷이며 vscode 모듈이 번들에 포함되지 않았는지 확인한다",
+      "콘솔에 번들링 에러가 없는지 확인한다"
+    ],
+    "passes": false,
+    "implemented_in_commit": null,
+    "notes": ""
+  },
+  {
+    "id": "F-031",
+    "category": "infrastructure",
+    "priority": 2,
+    "description": "npm test (Mocha + @vscode/test-cli)가 오류 없이 통과된다",
+    "steps": [
+      "npm test 명령을 실행한다",
+      "VSCode Extension Host 환경이 실행되는지 확인한다",
+      "src/test/ 하위의 모든 테스트 파일이 실행되는지 확인한다",
+      "모든 테스트가 통과하는지 확인한다",
+      "테스트 실패 시 에러 메시지와 스택 트레이스가 출력되는지 확인한다"
+    ],
+    "passes": false,
+    "implemented_in_commit": null,
+    "notes": ""
+  },
+  {
+    "id": "F-032",
+    "category": "functional",
+    "priority": 3,
+    "description": "이미 열린 메인 패널이 있을 때 명령을 재실행하면 새 패널이 열리지 않고 기존 패널이 포커스된다",
+    "steps": [
+      "Extension의 메인 열기 명령을 실행하여 WebviewPanel을 연다",
+      "다른 편집기 탭을 클릭하여 패널에서 포커스를 이동한다",
+      "동일한 열기 명령을 다시 실행한다",
+      "새로운 패널이 생성되지 않고 기존 패널이 활성화되는지 확인한다",
+      "패널이 이전에 표시한 콘텐츠를 유지하는지 확인한다"
+    ],
+    "passes": false,
+    "implemented_in_commit": null,
+    "notes": ""
+  },
+  {
+    "id": "F-033",
+    "category": "functional",
+    "priority": 4,
+    "description": "에이전트 CLI 프로세스가 오류 코드로 종료되면 UI에 오류 메시지와 종료 코드가 표시된다",
+    "steps": [
+      "Agent Settings에서 존재하지 않는 CLI 경로를 설정한다",
+      "Init 또는 Analyzer 액션을 실행한다",
+      "CLI 프로세스가 오류 코드(0이 아닌 값)로 종료되는지 확인한다",
+      "WebviewPanel에 오류 메시지와 종료 코드가 표시되는지 확인한다",
+      "성공 메시지나 파일 목록이 표시되지 않는지 확인한다",
+      "콘솔 Output 패널에도 오류 내용이 기록되는지 확인한다"
+    ],
+    "passes": false,
+    "implemented_in_commit": null,
+    "notes": ""
+  },
+  {
+    "id": "F-034",
+    "category": "functional",
+    "priority": 3,
+    "description": "사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다",
+    "steps": [
+      "Init 또는 Analyzer 액션을 실행하여 에이전트 프로세스를 시작한다",
+      "프로세스가 실행 중인 동안 UI에 '취소' 버튼이 표시되는지 확인한다",
+      "'취소' 버튼을 클릭한다",
+      "child_process가 종료되는지 확인한다",
+      "UI에 취소 완료 메시지가 표시되는지 확인한다",
+      "취소 후 '취소' 버튼이 사라지고 UI가 초기 상태로 돌아오는지 확인한다"
+    ],
+    "passes": false,
+    "implemented_in_commit": null,
+    "notes": ""
   }
 ]
