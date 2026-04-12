@@ -198,7 +198,8 @@
       "Verify the path is persisted via vscode.workspace.getConfiguration or JSON",
       "Reload the panel and verify the saved path is pre-filled"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "965745ea2307f6549c4d63e2e5ee28ae903f6e46"
   },
   {
     "id": "F-016",

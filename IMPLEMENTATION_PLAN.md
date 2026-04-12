@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 11개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-014, F-028, F-029, F-030, F-031, F-032)
-- 마지막 커밋: d755581 feat(F-014): 에이전트 타입 선택 설정 UI 구현
+- 완료된 기능: 12개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-014, F-015, F-028, F-029, F-030, F-031, F-032)
+- 마지막 커밋: 965745e feat(F-015): CLI 실행 경로 설정 UI 구현
 
 ## 다음 우선 작업
 
@@ -21,7 +21,7 @@
 - [x] F-032: 이미 열린 메인 패널이 있을 때 명령을 재실행하면 새 패널이 열리지 않고 기존 패널이 포커스된다 (category: functional, priority: 3) — 27f6313
 - [x] F-005: User can input project requirement data through the main panel form (category: functional) — fa0d125
 - [x] F-014: User can select the CLI agent type in settings (category: functional) — d755581
-- [ ] F-015: User can set the CLI executable path in agent settings (category: functional)
+- [x] F-015: User can set the CLI executable path in agent settings (category: functional) — 965745e
 - [ ] F-016: User can set extra CLI flags in agent settings (category: functional)
 - [ ] F-027: Agent settings are persisted across VSCode sessions (category: functional)
 - [ ] F-006: User input data is converted to Markdown format for agent consumption (category: functional)
@@ -81,6 +81,15 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 6 (Coding Agent)
+
+- F-015: CLI 실행 경로 설정 UI 구현
+  - src/config/AgentConfig.ts: KEY_CLI_PATH, DEFAULT_CLI_PATH 상수 추가, getCliPath()/setCliPath() 메서드 추가
+  - src/ui/AgentSettingsView.ts: AgentSettingsMessage 유니온 타입 확장(setCliPath 추가), _cliPath 필드, getCliPath() 정적 메서드, _processMessage에 setCliPath 처리, HTML에 id="cli-path-input" 입력 필드, _escapeHtml() 보안 메서드 추가
+  - package.json: agentHarness.cliPath 설정 스키마 추가
+  - src/test/extension.test.ts: F-015 테스트 2건 추가
+  - 13 passing (F-001×2, F-002×1, F-004×2, F-032×1, F-005×2, F-014×3, F-015×2)
 
 ### 2026-04-13 — Ralph Loop 세션 5 (Coding Agent)
 
