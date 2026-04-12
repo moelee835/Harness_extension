@@ -26,10 +26,24 @@ export interface AgentSettingsCliPathMessage {
 }
 
 /**
- * 웹뷰에서 Extension으로 전달되는 에이전트 설정 메시지의 유니온 타입.
- * setAgentType 또는 setCliPath 메시지 중 하나이다.
+ * 웹뷰에서 Extension으로 전달되는 추가 CLI 플래그 변경 메시지.
+ * 사용자가 추가 플래그 입력 필드를 수정하면 웹뷰 스크립트가 이 형식으로 postMessage를 호출한다.
  */
-export type AgentSettingsMessage = AgentSettingsTypeMessage | AgentSettingsCliPathMessage;
+export interface AgentSettingsExtraArgsMessage {
+	/** 메시지 종류 식별자 */
+	type: 'setExtraArgs';
+	/** 입력된 추가 CLI 플래그 문자열 (예: '--verbose --model claude-opus-4-6') */
+	value: string;
+}
+
+/**
+ * 웹뷰에서 Extension으로 전달되는 에이전트 설정 메시지의 유니온 타입.
+ * setAgentType, setCliPath, setExtraArgs 메시지 중 하나이다.
+ */
+export type AgentSettingsMessage =
+	| AgentSettingsTypeMessage
+	| AgentSettingsCliPathMessage
+	| AgentSettingsExtraArgsMessage;
 
 /**
  * Extension에서 웹뷰로 전달되는 초기 설정 메시지 타입 정의.
@@ -77,6 +91,12 @@ export class AgentSettingsView {
 	private _cliPath: string;
 
 	/**
+	 * 웹뷰에서 수신하여 AgentConfig에 저장한 최신 추가 CLI 플래그 문자열.
+	 * 초기값은 현재 설정된 extraArgs로 채워진다.
+	 */
+	private _extraArgs: string;
+
+	/**
 	 * AgentSettingsView 생성자 — 외부에서 직접 호출하지 말 것.
 	 * 패널 생성은 반드시 `AgentSettingsView.show()` 정적 메서드를 통해 수행한다.
 	 *
@@ -90,6 +110,8 @@ export class AgentSettingsView {
 		this._agentType = AgentConfig.getAgentType();
 		// 현재 저장된 CLI 경로로 초기화
 		this._cliPath = AgentConfig.getCliPath();
+		// 현재 저장된 추가 CLI 플래그로 초기화
+		this._extraArgs = AgentConfig.getExtraArgs();
 
 		// Webview 내부 HTML 콘텐츠 렌더링
 		this._update();
@@ -153,6 +175,16 @@ export class AgentSettingsView {
 	}
 
 	/**
+	 * 현재 저장된 추가 CLI 플래그 문자열을 반환한다.
+	 * F-016 테스트에서 메시지 수신 후 AgentConfig 저장 여부를 검증하는 데 사용한다.
+	 *
+	 * @returns 현재 추가 CLI 플래그 (패널이 없으면 AgentConfig.getExtraArgs() 값)
+	 */
+	public static getExtraArgs(): string {
+		return AgentSettingsView.currentPanel?._extraArgs ?? AgentConfig.getExtraArgs();
+	}
+
+	/**
 	 * 테스트 환경에서 웹뷰 메시지 수신을 시뮬레이션한다.
 	 * 실제 웹뷰 샌드박스 환경에서는 직접 메시지를 주입할 수 없으므로,
 	 * 메시지 처리 로직을 검증하기 위해 테스트 코드에서만 호출한다.
@@ -213,6 +245,7 @@ export class AgentSettingsView {
 	 * 웹뷰에서 수신한 메시지를 처리한다.
 	 * setAgentType 메시지: AgentConfig에 에이전트 타입을 저장하고 내부 상태를 갱신한다.
 	 * setCliPath 메시지: AgentConfig에 CLI 경로를 저장하고 내부 상태를 갱신한다.
+	 * setExtraArgs 메시지: AgentConfig에 추가 CLI 플래그를 저장하고 내부 상태를 갱신한다.
 	 *
 	 * @param message - 웹뷰에서 전달된 메시지 객체
 	 */
@@ -231,6 +264,13 @@ export class AgentSettingsView {
 			AgentConfig.setCliPath(message.value).catch((err: unknown) => {
 				console.error('[AgentHarness] CLI 경로 저장 실패:', err);
 			});
+		} else if (message.type === 'setExtraArgs') {
+			// 내부 상태 갱신 — 즉시 접근 가능한 인메모리 값
+			this._extraArgs = message.value;
+			// VSCode 전역 설정에 비동기 저장 — 세션 간 영속성 보장(F-027)
+			AgentConfig.setExtraArgs(message.value).catch((err: unknown) => {
+				console.error('[AgentHarness] 추가 CLI 플래그 저장 실패:', err);
+			});
 		}
 	}
 
@@ -247,6 +287,7 @@ export class AgentSettingsView {
 	 * VSCode Webview 보안 정책에 따라 nonce 기반 CSP를 적용한다.
 	 * F-014: 에이전트 타입 선택 드롭다운을 포함한다.
 	 * F-015: CLI 실행 경로 입력 필드를 포함한다.
+	 * F-016: 추가 CLI 플래그 입력 필드를 포함한다.
 	 *
 	 * @returns HTML 문자열
 	 */
@@ -257,6 +298,8 @@ export class AgentSettingsView {
 		const currentType = this._agentType;
 		// 현재 저장된 CLI 경로 — 입력 필드의 초기값으로 사용 (XSS 방지를 위해 HTML 이스케이프)
 		const currentCliPath = this._escapeHtml(this._cliPath);
+		// 현재 저장된 추가 CLI 플래그 — textarea의 초기값으로 사용 (XSS 방지를 위해 HTML 이스케이프)
+		const currentExtraArgs = this._escapeHtml(this._extraArgs);
 
 		return /* html */`<!DOCTYPE html>
 <html lang="ko">
@@ -334,6 +377,28 @@ export class AgentSettingsView {
 		#cli-path-input::placeholder {
 			color: var(--vscode-input-placeholderForeground);
 		}
+
+		/* 추가 CLI 플래그 입력 textarea — VSCode 입력 테마 변수 적용 */
+		#extra-args-input {
+			padding: 4px 8px;
+			background-color: var(--vscode-input-background);
+			color: var(--vscode-input-foreground);
+			border: 1px solid var(--vscode-input-border, transparent);
+			font-family: var(--vscode-font-family);
+			font-size: var(--vscode-font-size);
+			resize: vertical;
+			min-height: 60px;
+		}
+
+		#extra-args-input:focus {
+			outline: 1px solid var(--vscode-focusBorder);
+			border-color: var(--vscode-focusBorder);
+		}
+
+		/* 플레이스홀더 텍스트 색상 */
+		#extra-args-input::placeholder {
+			color: var(--vscode-input-placeholderForeground);
+		}
 	</style>
 </head>
 <body>
@@ -360,11 +425,21 @@ export class AgentSettingsView {
 		/>
 	</div>
 
+	<!-- F-016: 추가 CLI 플래그 입력 폼 -->
+	<div class="form-group">
+		<label for="extra-args-input">추가 CLI 플래그</label>
+		<textarea
+			id="extra-args-input"
+			placeholder="예: --verbose --model claude-opus-4-6"
+		>${currentExtraArgs}</textarea>
+	</div>
+
 	<script nonce="${nonce}">
 		// VSCode Webview API 초기화 — postMessage, getState, setState 사용 가능
 		const vscode = acquireVsCodeApi();
 		const select = document.getElementById('agent-type-select');
 		const cliPathInput = document.getElementById('cli-path-input');
+		const extraArgsInput = document.getElementById('extra-args-input');
 
 		// 드롭다운 변경 시 Extension으로 메시지 전송 — AgentConfig에 저장됨
 		select.addEventListener('change', () => {
@@ -375,6 +450,12 @@ export class AgentSettingsView {
 		// input 이벤트: 키 입력 즉시 반응하여 실시간으로 저장
 		cliPathInput.addEventListener('input', () => {
 			vscode.postMessage({ type: 'setCliPath', value: cliPathInput.value });
+		});
+
+		// 추가 CLI 플래그 입력 변경 시 Extension으로 메시지 전송 — AgentConfig에 저장됨
+		// input 이벤트: 키 입력 즉시 반응하여 실시간으로 저장
+		extraArgsInput.addEventListener('input', () => {
+			vscode.postMessage({ type: 'setExtraArgs', value: extraArgsInput.value });
 		});
 	</script>
 </body>

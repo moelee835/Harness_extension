@@ -16,7 +16,7 @@ const VALID_AGENT_TYPES: AgentType[] = ['claude', 'gemini', 'custom'];
  * CLI 에이전트 설정을 VSCode workspace configuration을 통해 읽고 쓰는 유틸리티 클래스.
  * F-014: 에이전트 타입 선택 및 저장
  * F-015: CLI 실행 경로 설정
- * F-016: 추가 CLI 플래그 설정 (향후 구현)
+ * F-016: 추가 CLI 플래그 설정
  * F-027: VSCode 세션 간 설정 영속성 — workspace.getConfiguration이 자동으로 보장
  *
  * 설정 키 네임스페이스: 'agentHarness'
@@ -31,11 +31,17 @@ export class AgentConfig {
 	/** cliPath 설정 키 — CLI 실행 파일 경로 */
 	private static readonly KEY_CLI_PATH = 'cliPath';
 
+	/** extraArgs 설정 키 — child_process.spawn에 추가로 전달할 CLI 플래그 */
+	private static readonly KEY_EXTRA_ARGS = 'extraArgs';
+
 	/** 기본 에이전트 타입 */
 	public static readonly DEFAULT_AGENT_TYPE: AgentType = 'claude';
 
 	/** 기본 CLI 실행 경로 — 빈 문자열이면 PATH 환경변수에서 자동 탐색 */
 	public static readonly DEFAULT_CLI_PATH = '';
+
+	/** 기본 추가 CLI 플래그 — 빈 문자열이면 추가 플래그 없음 */
+	public static readonly DEFAULT_EXTRA_ARGS = '';
 
 	/**
 	 * 현재 설정된 에이전트 타입을 반환한다.
@@ -91,5 +97,31 @@ export class AgentConfig {
 		const config = vscode.workspace.getConfiguration(AgentConfig.NAMESPACE);
 		// ConfigurationTarget.Global: 전역 설정 파일(settings.json)에 저장 → 세션 간 영속성 보장
 		await config.update(AgentConfig.KEY_CLI_PATH, cliPath, vscode.ConfigurationTarget.Global);
+	}
+
+	/**
+	 * 현재 설정된 추가 CLI 플래그 문자열을 반환한다.
+	 * 설정값이 없으면 빈 문자열(기본값)을 반환한다.
+	 * 빈 문자열인 경우 AgentRunner가 추가 플래그 없이 CLI를 호출한다.
+	 * 실제 spawn 호출 시 이 값을 공백 기준으로 split하여 args 배열에 추가한다.
+	 *
+	 * @returns 추가 CLI 플래그 문자열 (예: '--verbose --model claude-opus-4-6')
+	 */
+	public static getExtraArgs(): string {
+		const config = vscode.workspace.getConfiguration(AgentConfig.NAMESPACE);
+		return config.get<string>(AgentConfig.KEY_EXTRA_ARGS) ?? AgentConfig.DEFAULT_EXTRA_ARGS;
+	}
+
+	/**
+	 * 추가 CLI 플래그 문자열을 VSCode 전역 설정에 저장한다.
+	 * 저장된 값은 VSCode 세션 간 영속적으로 유지된다.
+	 *
+	 * @param extraArgs - 저장할 추가 CLI 플래그 문자열 (예: '--verbose --model claude-opus-4-6')
+	 * @returns 설정 저장 완료를 나타내는 Promise
+	 */
+	public static async setExtraArgs(extraArgs: string): Promise<void> {
+		const config = vscode.workspace.getConfiguration(AgentConfig.NAMESPACE);
+		// ConfigurationTarget.Global: 전역 설정 파일(settings.json)에 저장 → 세션 간 영속성 보장
+		await config.update(AgentConfig.KEY_EXTRA_ARGS, extraArgs, vscode.ConfigurationTarget.Global);
 	}
 }

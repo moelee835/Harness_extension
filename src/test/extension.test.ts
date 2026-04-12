@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import type { ExtensionApi } from '../extension.js';
 import type { WebviewMessage } from '../ui/MainPanel.js';
-import type { AgentSettingsMessage, AgentSettingsCliPathMessage } from '../ui/AgentSettingsView.js';
+import type { AgentSettingsMessage, AgentSettingsCliPathMessage, AgentSettingsExtraArgsMessage } from '../ui/AgentSettingsView.js';
 
 // Extension ID — package.json의 publisher.name 형식
 const EXTENSION_ID = 'undefined-publisher.agent-harness-framework';
@@ -290,6 +290,70 @@ suite('Extension Test Suite', () => {
 			AgentSettingsView.getCliPath(),
 			'',
 			'빈 경로로 setCliPath 메시지 수신 후 빈 문자열로 저장되어야 합니다.'
+		);
+	});
+
+	// F-016: 에이전트 설정 패널 HTML에 추가 CLI 플래그 입력 필드가 포함되어 있는지 검증
+	test('F-016: 에이전트 설정 패널 HTML에 extra-args-input 입력 필드가 있어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 에이전트 설정 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openAgentSettings');
+
+		const { AgentSettingsView } = ext.exports;
+		assert.strictEqual(AgentSettingsView.isOpen(), true, '설정 패널이 열려 있어야 합니다.');
+
+		// 웹뷰 HTML에 추가 CLI 플래그 입력 필드가 있는지 확인
+		const html = AgentSettingsView.getHtmlForTest();
+		assert.ok(
+			html.includes('id="extra-args-input"'),
+			'HTML에 id="extra-args-input" 입력 필드가 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			html.includes('<textarea'),
+			'HTML에 <textarea> 요소가 포함되어 있어야 합니다.'
+		);
+	});
+
+	// F-016: setExtraArgs 메시지 수신 시 추가 CLI 플래그가 AgentConfig에 저장되는지 검증
+	test('F-016: setExtraArgs 메시지 수신 시 추가 CLI 플래그가 저장되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 에이전트 설정 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openAgentSettings');
+
+		const { AgentSettingsView } = ext.exports;
+		assert.strictEqual(AgentSettingsView.isOpen(), true, '설정 패널이 열려 있어야 합니다.');
+
+		// 추가 CLI 플래그 변경 메시지 시뮬레이션 — 사용자가 플래그를 직접 입력하는 상황 재현
+		const testFlags = '--verbose --model claude-opus-4-6';
+		const flagsMessage: AgentSettingsExtraArgsMessage = { type: 'setExtraArgs', value: testFlags };
+		AgentSettingsView.simulateWebviewMessage(flagsMessage as AgentSettingsMessage);
+		assert.strictEqual(
+			AgentSettingsView.getExtraArgs(),
+			testFlags,
+			'setExtraArgs 메시지 수신 후 추가 CLI 플래그가 저장되어야 합니다.'
+		);
+
+		// 빈 문자열로 초기화 메시지 시뮬레이션
+		const emptyFlagsMessage: AgentSettingsExtraArgsMessage = { type: 'setExtraArgs', value: '' };
+		AgentSettingsView.simulateWebviewMessage(emptyFlagsMessage as AgentSettingsMessage);
+		assert.strictEqual(
+			AgentSettingsView.getExtraArgs(),
+			'',
+			'빈 플래그로 setExtraArgs 메시지 수신 후 빈 문자열로 저장되어야 합니다.'
 		);
 	});
 

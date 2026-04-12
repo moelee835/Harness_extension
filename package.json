@@ -46,6 +46,11 @@
           "type": "string",
           "default": "",
           "description": "CLI 에이전트 실행 파일의 절대 경로 (예: /usr/local/bin/claude). 비워두면 PATH 환경변수에서 자동 탐색한다."
+        },
+        "agentHarness.extraArgs": {
+          "type": "string",
+          "default": "",
+          "description": "CLI 에이전트 실행 시 child_process.spawn args 배열에 추가로 전달할 플래그 문자열 (예: --verbose --model claude-opus-4-6). 공백으로 구분하여 입력한다."
         }
       }
     }
