@@ -96,6 +96,13 @@ export class MainPanel {
 	private _statusMessage: string = '';
 
 	/**
+	 * CLI 에이전트 프로세스가 출력한 stdout/stderr 텍스트 목록.
+	 * appendOutput() 호출 시 추가되며, getOutputForTest()로 외부에서 조회 가능하다.
+	 * F-020: 실시간 스트리밍 출력을 Extension 측에서 누적 저장한다.
+	 */
+	private _outputLines: string[] = [];
+
+	/**
 	 * MainPanel 생성자 — 외부에서 직접 호출하지 말 것.
 	 * 패널 생성은 반드시 `MainPanel.show()` 정적 메서드를 통해 수행한다.
 	 *
@@ -185,6 +192,47 @@ export class MainPanel {
 	 */
 	public static getStatusMessageForTest(): string {
 		return MainPanel.currentPanel?._statusMessage ?? '';
+	}
+
+	/**
+	 * CLI 에이전트 프로세스의 출력 텍스트를 웹뷰 출력 영역에 추가한다.
+	 * Extension이 runner.invoke()의 onStdout/onStderr 콜백에서 이 메서드를 호출한다.
+	 * F-020: 실시간 스트리밍 출력을 내부 버퍼에 누적하고 웹뷰에 전달한다.
+	 *
+	 * @param text - 출력 텍스트 청크
+	 * @param isStderr - true이면 stderr(오류 스타일), false이면 stdout(일반 스타일)
+	 */
+	public static appendOutput(text: string, isStderr: boolean): void {
+		if (MainPanel.currentPanel) {
+			// 내부 버퍼에 누적 (테스트용 조회 지원)
+			MainPanel.currentPanel._outputLines.push(text);
+			// 웹뷰로 출력 데이터 전달 — 웹뷰 스크립트가 #output-area에 추가
+			MainPanel.currentPanel.panel.webview.postMessage({
+				type: 'appendOutput',
+				text,
+				isStderr,
+			});
+		}
+	}
+
+	/**
+	 * 누적된 출력 텍스트 목록을 반환한다.
+	 * F-020: 테스트에서 appendOutput() 호출 후 출력이 올바르게 저장되었는지 검증하는 데 사용한다.
+	 *
+	 * @returns 출력 텍스트 청크 배열 (패널이 없거나 출력이 없으면 빈 배열)
+	 */
+	public static getOutputForTest(): string[] {
+		return MainPanel.currentPanel?._outputLines ?? [];
+	}
+
+	/**
+	 * 출력 버퍼를 초기화한다.
+	 * F-020: 테스트 간 출력 상태가 공유되지 않도록 각 테스트 시작 전에 호출한다.
+	 */
+	public static clearOutputForTest(): void {
+		if (MainPanel.currentPanel) {
+			MainPanel.currentPanel._outputLines = [];
+		}
 	}
 
 	/**
@@ -422,6 +470,27 @@ export class MainPanel {
 			border: 1px solid var(--vscode-inputValidation-infoBorder, #007acc);
 			font-size: var(--vscode-font-size);
 		}
+
+		/* F-020: CLI 에이전트 출력 영역 — 스크롤 가능한 터미널 스타일 */
+		#output-area {
+			margin-top: 16px;
+			padding: 10px;
+			background-color: var(--vscode-terminal-background, #1e1e1e);
+			color: var(--vscode-terminal-foreground, #cccccc);
+			font-family: var(--vscode-editor-font-family, monospace);
+			font-size: var(--vscode-editor-font-size, 13px);
+			min-height: 120px;
+			max-height: 400px;
+			overflow-y: auto;
+			white-space: pre-wrap;
+			word-break: break-all;
+			border: 1px solid var(--vscode-panel-border, #444);
+		}
+
+		/* F-020: stderr 출력 텍스트 — 오류임을 구분하는 붉은 색 */
+		#output-area .stderr-text {
+			color: var(--vscode-terminal-ansiRed, #f44747);
+		}
 	</style>
 </head>
 <body>
@@ -445,6 +514,9 @@ export class MainPanel {
 	<!-- F-034: 상태 메시지 영역 — 취소 완료 또는 오류 발생 시 메시지 표시 -->
 	<div id="status-message"${statusMsgStyle}>${escapedStatusMessage}</div>
 
+	<!-- F-020: CLI 에이전트 stdout/stderr 실시간 출력 영역 -->
+	<div id="output-area"></div>
+
 	<script nonce="${nonce}">
 		// VSCode Webview API 초기화 — postMessage, getState, setState 사용 가능
 		const vscode = acquireVsCodeApi();
@@ -465,6 +537,25 @@ export class MainPanel {
 		// F-034: 취소 버튼 클릭 시 Extension으로 취소 요청 메시지 전송
 		cancelBtn.addEventListener('click', () => {
 			vscode.postMessage({ type: 'cancelRequested' });
+		});
+
+		// F-020: Extension에서 전달되는 출력 데이터 처리 — #output-area에 텍스트 추가
+		window.addEventListener('message', (event) => {
+			const message = event.data;
+			if (message.type === 'appendOutput') {
+				const outputArea = document.getElementById('output-area');
+				if (outputArea) {
+					const span = document.createElement('span');
+					// stderr이면 붉은 색 클래스 적용하여 일반 출력과 구별
+					if (message.isStderr) {
+						span.className = 'stderr-text';
+					}
+					span.textContent = message.text;
+					outputArea.appendChild(span);
+					// 최신 출력으로 자동 스크롤
+					outputArea.scrollTop = outputArea.scrollHeight;
+				}
+			}
 		});
 	</script>
 </body>

@@ -804,6 +804,71 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(runner.isRunning(), false, '취소 후 isRunning()은 false여야 합니다.');
 	});
 
+	// F-020: 메인 패널 HTML에 출력 영역이 포함되어 있는지 검증
+	test('F-020: 메인 패널 HTML에 id="output-area" 영역이 있어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 웹뷰 HTML에 출력 영역이 있는지 확인
+		const html = MainPanel.getHtmlForTest();
+		assert.ok(
+			html.includes('id="output-area"'),
+			'HTML에 id="output-area" 요소가 포함되어 있어야 합니다.'
+		);
+
+		// stderr 구분 스타일이 CSS에 정의되어 있는지 확인
+		assert.ok(
+			html.includes('stderr-text'),
+			'HTML에 stderr-text 클래스 스타일이 포함되어 있어야 합니다.'
+		);
+	});
+
+	// F-020: appendOutput() 호출 시 출력이 내부 버퍼에 누적되는지 검증
+	test('F-020: appendOutput() 호출 시 stdout/stderr 출력이 버퍼에 저장되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 이전 테스트에서 누적된 출력 초기화
+		MainPanel.clearOutputForTest();
+		assert.strictEqual(MainPanel.getOutputForTest().length, 0, '초기화 후 출력 버퍼가 비어 있어야 합니다.');
+
+		// stdout 출력 추가 시뮬레이션
+		const stdoutText = '빌드가 시작됩니다...\n';
+		MainPanel.appendOutput(stdoutText, false);
+
+		// stderr 출력 추가 시뮬레이션
+		const stderrText = '경고: 타입 정의 파일을 찾을 수 없습니다.\n';
+		MainPanel.appendOutput(stderrText, true);
+
+		// 출력 버퍼 검증
+		const outputLines = MainPanel.getOutputForTest();
+		assert.strictEqual(outputLines.length, 2, '두 개의 출력이 버퍼에 저장되어 있어야 합니다.');
+		assert.strictEqual(outputLines[0], stdoutText, '첫 번째 항목이 stdout 텍스트여야 합니다.');
+		assert.strictEqual(outputLines[1], stderrText, '두 번째 항목이 stderr 텍스트여야 합니다.');
+	});
+
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
 	test('F-005: inputChanged 메시지 수신 시 입력값이 저장되어야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

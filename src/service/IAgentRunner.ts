@@ -12,10 +12,19 @@ export interface IAgentRunner {
 	 * CLI 에이전트를 호출하여 주어진 프롬프트를 처리한다.
 	 * 에이전트 프로세스가 종료될 때까지 대기한다.
 	 *
+	 * F-020: onStdout/onStderr 콜백을 통해 프로세스 출력을 실시간으로 전달받을 수 있다.
+	 * 콜백을 생략하면 출력을 무시한다.
+	 *
 	 * @param prompt - 에이전트에게 전달할 프롬프트 문자열
+	 * @param onStdout - stdout 데이터 수신 시 호출되는 콜백 (선택)
+	 * @param onStderr - stderr 데이터 수신 시 호출되는 콜백 (선택)
 	 * @returns 프로세스 종료 후 resolve되는 Promise
 	 */
-	invoke(prompt: string): Promise<void>;
+	invoke(
+		prompt: string,
+		onStdout?: (chunk: string) => void,
+		onStderr?: (chunk: string) => void,
+	): Promise<void>;
 
 	/**
 	 * 현재 실행 중인 에이전트 프로세스를 즉시 종료한다.

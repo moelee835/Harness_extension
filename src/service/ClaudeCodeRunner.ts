@@ -87,19 +87,26 @@ export class ClaudeCodeRunner implements IAgentRunner {
 
 	/**
 	 * Claude Code CLI를 child_process.spawn으로 실행하여 주어진 프롬프트를 처리한다.
-	 * stdout/stderr 스트리밍은 F-020에서 구현 예정이다.
+	 * F-020: stdout/stderr 데이터를 실시간으로 콜백에 전달한다.
 	 *
 	 * @param prompt - Claude Code에 전달할 프롬프트 문자열
+	 * @param onStdout - stdout 데이터 청크 수신 시 호출되는 콜백 (선택)
+	 * @param onStderr - stderr 데이터 청크 수신 시 호출되는 콜백 (선택)
 	 * @returns 프로세스가 종료될 때 resolve되는 Promise.
 	 *          비정상 종료 코드(0이 아닌 경우) 시 Error를 throw한다.
 	 */
-	public invoke(prompt: string): Promise<void> {
+	public invoke(
+		prompt: string,
+		onStdout?: (chunk: string) => void,
+		onStderr?: (chunk: string) => void,
+	): Promise<void> {
 		return new Promise<void>((resolve, reject) => {
 			// '--print' 플래그로 비대화형(non-interactive) 모드 실행
 			// 추가 플래그 배열이 있으면 앞에 붙여 전달
 			const args = [...this._extraArgs, '--print', prompt];
 
 			// child_process.spawn으로 Claude Code CLI 프로세스 생성
+			// stdio 기본값 'pipe' — stdout/stderr을 스트림으로 수신 가능 (F-020)
 			const child = spawn(this._spawnCommand, args, {
 				// 부모 프로세스의 환경변수를 그대로 상속 (PATH 포함)
 				env: process.env,
@@ -110,6 +117,20 @@ export class ClaudeCodeRunner implements IAgentRunner {
 			// 실행 상태 플래그 설정 및 프로세스 참조 저장
 			this._isRunning = true;
 			this._childProcess = child;
+
+			// F-020: stdout 데이터를 청크 단위로 수신하여 콜백 호출
+			if (onStdout) {
+				child.stdout?.on('data', (data: Buffer) => {
+					onStdout(data.toString());
+				});
+			}
+
+			// F-020: stderr 데이터를 청크 단위로 수신하여 콜백 호출
+			if (onStderr) {
+				child.stderr?.on('data', (data: Buffer) => {
+					onStderr(data.toString());
+				});
+			}
 
 			// 프로세스 종료 이벤트 처리 (정상 종료, 오류 종료, 취소 종료 모두 포함)
 			child.on('close', (code: number | null) => {
