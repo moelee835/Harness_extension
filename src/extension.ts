@@ -4,6 +4,10 @@ import * as vscode from 'vscode';
 import { MainPanel } from './ui/MainPanel.js';
 // 에이전트 설정 패널 UI 클래스 가져오기
 import { AgentSettingsView } from './ui/AgentSettingsView.js';
+// 에이전트 실행기 팩토리 클래스 가져오기
+import { AgentRunnerFactory } from './service/AgentRunnerFactory.js';
+// Claude Code 실행기 클래스 가져오기 — 테스트에서 instanceof 검증에 사용
+import { ClaudeCodeRunner } from './service/ClaudeCodeRunner.js';
 
 /** Extension activate() 반환 타입 — 테스트에서 내부 상태 접근 시 사용 */
 export interface ExtensionApi {
@@ -11,6 +15,10 @@ export interface ExtensionApi {
 	MainPanel: typeof MainPanel;
 	/** 테스트에서 AgentSettingsView 싱글톤 상태를 검증하기 위해 노출하는 클래스 참조 */
 	AgentSettingsView: typeof AgentSettingsView;
+	/** 테스트에서 AgentRunnerFactory.create() 호출 및 반환 타입을 검증하기 위해 노출 */
+	AgentRunnerFactory: typeof AgentRunnerFactory;
+	/** 테스트에서 instanceof ClaudeCodeRunner 검증에 사용 */
+	ClaudeCodeRunner: typeof ClaudeCodeRunner;
 }
 
 /**
@@ -58,8 +66,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 	// 등록한 모든 disposable을 subscriptions에 추가하여 Extension 비활성화 시 자동 해제
 	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable, openAgentSettingsDisposable);
 
-	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.AgentSettingsView 형태로 접근 가능
-	return { MainPanel, AgentSettingsView };
+	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.XXX 형태로 접근 가능
+	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner };
 }
 
 /**

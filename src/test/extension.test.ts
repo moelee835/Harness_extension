@@ -502,6 +502,77 @@ suite('Extension Test Suite', () => {
 		);
 	});
 
+	// F-017: agentType이 'claude'일 때 AgentRunnerFactory.create()가 ClaudeCodeRunner를 반환하는지 검증
+	test('F-017: AgentRunnerFactory.create()가 claude 타입에 ClaudeCodeRunner를 반환해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// agentType을 'claude'로 설정 — AgentConfig.getAgentType()이 'claude'를 반환하도록
+		const config = vscode.workspace.getConfiguration('agentHarness');
+		await config.update('agentType', 'claude', vscode.ConfigurationTarget.Global);
+		// cliPath를 빈 문자열로 초기화 — 기본 'claude' 명령이 사용되어야 함
+		await config.update('cliPath', '', vscode.ConfigurationTarget.Global);
+		await config.update('extraArgs', '', vscode.ConfigurationTarget.Global);
+
+		const { AgentRunnerFactory, ClaudeCodeRunner } = ext.exports;
+
+		// AgentRunnerFactory.create()가 ClaudeCodeRunner 인스턴스를 반환하는지 확인
+		const runner = AgentRunnerFactory.create();
+		assert.ok(
+			runner instanceof ClaudeCodeRunner,
+			'agentType이 claude일 때 ClaudeCodeRunner 인스턴스가 반환되어야 합니다.'
+		);
+
+		// spawn 명령이 'claude'인지 확인 — cliPath가 빈 문자열이면 기본값 'claude' 사용
+		assert.strictEqual(
+			runner.getSpawnCommand(),
+			'claude',
+			'cliPath가 빈 문자열이면 spawn 명령이 claude여야 합니다.'
+		);
+	});
+
+	// F-017: cliPath가 설정된 경우 spawn 명령이 cliPath 값을 사용하는지 검증
+	test('F-017: cliPath가 설정된 경우 spawn 명령이 cliPath여야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// cliPath를 사용자 지정 경로로 설정
+		const customPath = '/usr/local/bin/claude';
+		const config = vscode.workspace.getConfiguration('agentHarness');
+		await config.update('agentType', 'claude', vscode.ConfigurationTarget.Global);
+		await config.update('cliPath', customPath, vscode.ConfigurationTarget.Global);
+		await config.update('extraArgs', '', vscode.ConfigurationTarget.Global);
+
+		const { AgentRunnerFactory, ClaudeCodeRunner } = ext.exports;
+
+		// AgentRunnerFactory.create()가 ClaudeCodeRunner 인스턴스를 반환하는지 확인
+		const runner = AgentRunnerFactory.create();
+		assert.ok(
+			runner instanceof ClaudeCodeRunner,
+			'agentType이 claude일 때 ClaudeCodeRunner 인스턴스가 반환되어야 합니다.'
+		);
+
+		// spawn 명령이 설정된 cliPath인지 확인
+		assert.strictEqual(
+			runner.getSpawnCommand(),
+			customPath,
+			`cliPath가 설정된 경우 spawn 명령이 ${customPath}여야 합니다.`
+		);
+
+		// 정리: 기본값으로 복원
+		await config.update('cliPath', '', vscode.ConfigurationTarget.Global);
+	});
+
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
 	test('F-005: inputChanged 메시지 수신 시 입력값이 저장되어야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

@@ -9,4 +9,9 @@ export default defineConfig({
 		'--disable-updates',
 		'--disable-workspace-trust',
 	],
+	// VSCode 설정 파일 쓰기(config.update) 등 디스크 I/O가 포함된 통합 테스트는
+	// 기본 2000ms 타임아웃으로 간헐적 실패가 발생하므로 10초로 늘린다.
+	mocha: {
+		timeout: 10000,
+	},
 });
