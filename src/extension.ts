@@ -12,6 +12,8 @@ import { ClaudeCodeRunner } from './service/ClaudeCodeRunner.js';
 import { GeminiCliRunner } from './service/GeminiCliRunner.js';
 // 사용자 지정 CLI 실행기 클래스 가져오기 — 테스트에서 instanceof 검증에 사용
 import { CustomCliRunner } from './service/CustomCliRunner.js';
+// 프로젝트 초기화 서비스 가져오기 — F-007: Init Project 흐름을 담당
+import { InitService } from './service/InitService.js';
 
 /** Extension activate() 반환 타입 — 테스트에서 내부 상태 접근 시 사용 */
 export interface ExtensionApi {
@@ -27,6 +29,8 @@ export interface ExtensionApi {
 	GeminiCliRunner: typeof GeminiCliRunner;
 	/** 테스트에서 instanceof CustomCliRunner 검증에 사용 */
 	CustomCliRunner: typeof CustomCliRunner;
+	/** 테스트에서 InitService 생성 및 프롬프트 로딩을 검증하기 위해 노출 */
+	InitService: typeof InitService;
 }
 
 /**
@@ -58,6 +62,30 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 		() => {
 			// MainPanel.show()를 호출하여 패널을 열거나 기존 패널에 포커스 이동
 			MainPanel.show(context.extensionUri);
+
+			// F-007: Init Project 버튼 클릭 시 호출될 콜백 등록
+			// 패널 생성 후(또는 이미 열려 있는 경우) 콜백을 등록하여 InitService와 연결한다
+			MainPanel.setOnInitRequested(() => {
+				// AgentRunnerFactory로 현재 설정에 맞는 Runner 생성
+				const runner = AgentRunnerFactory.create();
+				const initService = new InitService(runner);
+
+				// InitService.run() 실행 — stdout/stderr를 MainPanel.appendOutput으로 스트리밍
+				initService.run(
+					(chunk) => MainPanel.appendOutput(chunk, false),
+					(chunk) => MainPanel.appendOutput(chunk, true),
+				).then((result) => {
+					// 성공 완료: UI에 성공 메시지와 생성된 파일 목록 표시
+					MainPanel.setRunning(false);
+					MainPanel.showSuccess(result.message, result.createdFiles);
+				}).catch((err: unknown) => {
+					// 오류 발생: UI에 오류 메시지 표시
+					const errorMessage = err instanceof Error
+						? err.message
+						: '알 수 없는 오류가 발생했습니다.';
+					MainPanel.showError(errorMessage);
+				});
+			});
 		}
 	);
 
@@ -75,7 +103,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable, openAgentSettingsDisposable);
 
 	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.XXX 형태로 접근 가능
-	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner, GeminiCliRunner, CustomCliRunner };
+	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner, GeminiCliRunner, CustomCliRunner, InitService };
 }
 
 /**

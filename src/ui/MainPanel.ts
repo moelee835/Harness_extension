@@ -34,12 +34,23 @@ export interface CancelRequestedMessage {
 }
 
 /**
+ * 웹뷰에서 Extension으로 전달되는 프로젝트 초기화 요청 메시지.
+ * 사용자가 'Init Project' 버튼을 클릭할 때 웹뷰 스크립트가 이 형식으로 postMessage를 호출한다.
+ * F-007: InitService를 통해 프로젝트 초기화 흐름을 시작하는 트리거.
+ */
+export interface InitRequestedMessage {
+	/** 메시지 종류 식별자 */
+	type: 'initRequested';
+}
+
+/**
  * 웹뷰에서 Extension으로 전달되는 메시지 유니온 타입.
  * F-005: 입력값 변경 메시지
  * F-006: Markdown 변환 요청 메시지
  * F-034: 에이전트 취소 요청 메시지
+ * F-007: 프로젝트 초기화 요청 메시지
  */
-export type WebviewMessage = InputChangedMessage | ConvertRequestedMessage | CancelRequestedMessage;
+export type WebviewMessage = InputChangedMessage | ConvertRequestedMessage | CancelRequestedMessage | InitRequestedMessage;
 
 /**
  * Agent Harness Framework의 메인 WebviewPanel을 관리하는 클래스.
@@ -110,6 +121,21 @@ export class MainPanel {
 	private _errorMessage: string = '';
 
 	/**
+	 * 프로젝트 초기화 완료 후 표시할 성공 메시지.
+	 * showSuccess() 호출 시 설정되고, setRunning(true) 호출 시 초기화된다.
+	 * F-007: 초기화 완료 메시지 및 생성된 파일 목록을 UI에 표시하는 데 사용된다.
+	 */
+	private _successMessage: string = '';
+
+	/**
+	 * 'Init Project' 버튼 클릭 시 호출되는 외부 콜백.
+	 * Extension 커맨드 핸들러에서 setOnInitRequested()로 등록하며,
+	 * _processMessage에서 initRequested 메시지 수신 시 호출된다.
+	 * F-007: Extension이 InitService.run()을 호출하는 진입점.
+	 */
+	private static _onInitRequested: (() => void) | undefined;
+
+	/**
 	 * MainPanel 생성자 — 외부에서 직접 호출하지 말 것.
 	 * 패널 생성은 반드시 `MainPanel.show()` 정적 메서드를 통해 수행한다.
 	 *
@@ -173,9 +199,10 @@ export class MainPanel {
 		if (MainPanel.currentPanel) {
 			MainPanel.currentPanel._isRunning = running;
 			if (running) {
-				// 새 실행 시작 시 이전 상태 메시지 및 오류 메시지 초기화
+				// 새 실행 시작 시 이전 상태 메시지, 오류 메시지, 성공 메시지 초기화
 				MainPanel.currentPanel._statusMessage = '';
 				MainPanel.currentPanel._errorMessage = '';
+				MainPanel.currentPanel._successMessage = '';
 			}
 			// HTML 재생성으로 취소 버튼 가시성 갱신
 			MainPanel.currentPanel._update();
@@ -291,6 +318,48 @@ export class MainPanel {
 	}
 
 	/**
+	 * 프로젝트 초기화 완료 성공 메시지와 생성된 파일 목록을 UI에 표시한다.
+	 * 성공 메시지는 별도의 성공 영역(#success-message)에 초록 색 스타일로 렌더링된다.
+	 * F-007: InitService.run()이 완료된 후 Extension 커맨드 핸들러가 이 메서드를 호출한다.
+	 *
+	 * @param message - 표시할 성공 메시지 문자열
+	 * @param files - 생성 또는 수정된 파일 경로 목록 (비어 있으면 목록 미표시)
+	 */
+	public static showSuccess(message: string, files: string[] = []): void {
+		if (MainPanel.currentPanel) {
+			// 파일 목록이 있으면 메시지 뒤에 줄 바꿈과 함께 추가
+			const fullMessage = files.length > 0
+				? `${message}\n\n생성된 파일:\n${files.map(f => `  - ${f}`).join('\n')}`
+				: message;
+			MainPanel.currentPanel._successMessage = fullMessage;
+			MainPanel.currentPanel._isRunning = false;
+			// HTML 재생성으로 성공 메시지 영역 표시
+			MainPanel.currentPanel._update();
+		}
+	}
+
+	/**
+	 * 현재 설정된 성공 메시지를 반환한다.
+	 * F-007: 테스트에서 showSuccess() 호출 후 성공 메시지가 올바르게 설정되었는지 검증하는 데 사용한다.
+	 *
+	 * @returns 성공 메시지 문자열 (성공 메시지가 없거나 패널이 없으면 빈 문자열)
+	 */
+	public static getSuccessMessageForTest(): string {
+		return MainPanel.currentPanel?._successMessage ?? '';
+	}
+
+	/**
+	 * 'Init Project' 버튼 클릭 시 호출될 콜백을 등록한다.
+	 * Extension 커맨드 핸들러가 이 메서드를 통해 InitService.run() 호출을 주입한다.
+	 * F-007: 웹뷰 메시지와 서비스 레이어 사이의 결합도를 낮추는 콜백 패턴.
+	 *
+	 * @param callback - initRequested 메시지 수신 시 호출되는 함수
+	 */
+	public static setOnInitRequested(callback: () => void): void {
+		MainPanel._onInitRequested = callback;
+	}
+
+	/**
 	 * 테스트 환경에서 웹뷰 메시지 수신을 시뮬레이션한다.
 	 * 실제 웹뷰 샌드박스 환경에서는 직접 메시지를 주입할 수 없으므로,
 	 * 메시지 처리 로직을 검증하기 위해 테스트 코드에서만 호출한다.
@@ -370,6 +439,18 @@ export class MainPanel {
 			this._statusMessage = '프로세스가 취소되었습니다.';
 			// HTML 재생성으로 취소 버튼 숨기기 및 상태 메시지 표시
 			this._update();
+		} else if (message.type === 'initRequested') {
+			// F-007: 사용자가 'Init Project' 버튼을 클릭함 — 실행 상태로 전환하고 외부 콜백 호출
+			this._isRunning = true;
+			this._statusMessage = '';
+			this._errorMessage = '';
+			this._successMessage = '';
+			// HTML 재생성으로 취소 버튼 표시 및 상태 초기화
+			this._update();
+			// Extension 커맨드 핸들러에 등록된 콜백 호출 — InitService.run()을 트리거한다
+			if (MainPanel._onInitRequested) {
+				MainPanel._onInitRequested();
+			}
 		}
 	}
 
@@ -395,6 +476,8 @@ export class MainPanel {
 
 		// F-034: 취소 버튼 가시성 — 에이전트 실행 중일 때만 표시
 		const cancelBtnStyle = this._isRunning ? '' : ' style="display:none"';
+		// F-007: Init Project 버튼 비활성화 — 에이전트 실행 중에는 중복 실행 방지
+		const initBtnDisabled = this._isRunning ? ' disabled' : '';
 		// F-034: 상태 메시지 가시성 — 메시지가 있을 때만 표시
 		const statusMsgStyle = this._statusMessage ? '' : ' style="display:none"';
 		// 상태 메시지 XSS 방지를 위해 HTML 이스케이프 처리
@@ -403,6 +486,10 @@ export class MainPanel {
 		const errorMsgStyle = this._errorMessage ? '' : ' style="display:none"';
 		// 오류 메시지 XSS 방지를 위해 HTML 이스케이프 처리
 		const escapedErrorMessage = this._escapeHtml(this._errorMessage);
+		// F-007: 성공 메시지 가시성 — 성공 메시지가 있을 때만 표시
+		const successMsgStyle = this._successMessage ? '' : ' style="display:none"';
+		// 성공 메시지 XSS 방지를 위해 HTML 이스케이프 처리 (줄 바꿈은 <br>로 변환)
+		const escapedSuccessMessage = this._escapeHtml(this._successMessage).replace(/\n/g, '<br>');
 
 		return /* html */`<!DOCTYPE html>
 <html lang="ko">
@@ -484,6 +571,27 @@ export class MainPanel {
 			background-color: var(--vscode-button-hoverBackground);
 		}
 
+		/* F-007: Init Project 버튼 — 프로젝트 초기화를 시작하는 기본 액션 버튼 */
+		#init-project-btn {
+			padding: 6px 14px;
+			background-color: var(--vscode-button-background);
+			color: var(--vscode-button-foreground);
+			border: none;
+			cursor: pointer;
+			font-family: var(--vscode-font-family);
+			font-size: var(--vscode-font-size);
+			margin-right: 8px;
+		}
+
+		#init-project-btn:hover:not(:disabled) {
+			background-color: var(--vscode-button-hoverBackground);
+		}
+
+		#init-project-btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
 		/* F-034: 취소 버튼 — 에이전트 실행 중일 때만 표시되는 보조 버튼 */
 		#cancel-btn {
 			padding: 6px 14px;
@@ -520,6 +628,17 @@ export class MainPanel {
 			font-size: var(--vscode-font-size);
 		}
 
+		/* F-007: 성공 메시지 영역 — 프로젝트 초기화 완료 시 생성된 파일 목록과 함께 표시 */
+		#success-message {
+			margin-top: 12px;
+			padding: 8px 12px;
+			background-color: var(--vscode-inputValidation-infoBackground, #1e3a1e);
+			color: var(--vscode-testing-iconPassed, #73c991);
+			border: 1px solid var(--vscode-testing-iconPassed, #73c991);
+			font-size: var(--vscode-font-size);
+			white-space: pre-wrap;
+		}
+
 		/* F-020: CLI 에이전트 출력 영역 — 스크롤 가능한 터미널 스타일 */
 		#output-area {
 			margin-top: 16px;
@@ -554,6 +673,9 @@ export class MainPanel {
 		></textarea>
 	</div>
 
+	<!-- F-007: Init Project 버튼 — 클릭 시 내장 init 프롬프트를 사용하여 프로젝트 초기화 시작 -->
+	<button id="init-project-btn"${initBtnDisabled}>Init Project</button>
+
 	<!-- F-006: Markdown 변환 버튼 — 클릭 시 현재 입력값을 Markdown으로 변환하도록 Extension에 요청 -->
 	<button id="convert-to-markdown-btn">Markdown으로 변환</button>
 
@@ -566,6 +688,9 @@ export class MainPanel {
 	<!-- F-033: 오류 메시지 영역 — 에이전트 CLI 프로세스가 오류 코드로 종료될 때 표시 -->
 	<div id="error-message"${errorMsgStyle}>${escapedErrorMessage}</div>
 
+	<!-- F-007: 성공 메시지 영역 — 프로젝트 초기화 완료 시 성공 메시지와 생성된 파일 목록 표시 -->
+	<div id="success-message"${successMsgStyle}>${escapedSuccessMessage}</div>
+
 	<!-- F-020: CLI 에이전트 stdout/stderr 실시간 출력 영역 -->
 	<div id="output-area"></div>
 
@@ -573,12 +698,18 @@ export class MainPanel {
 		// VSCode Webview API 초기화 — postMessage, getState, setState 사용 가능
 		const vscode = acquireVsCodeApi();
 		const textarea = document.getElementById('requirement-input');
+		const initBtn = document.getElementById('init-project-btn');
 		const convertBtn = document.getElementById('convert-to-markdown-btn');
 		const cancelBtn = document.getElementById('cancel-btn');
 
 		// 입력값 변경 시 Extension으로 메시지 전송 — Extension 측에서 값을 저장함
 		textarea.addEventListener('input', () => {
 			vscode.postMessage({ type: 'inputChanged', value: textarea.value });
+		});
+
+		// F-007: Init Project 버튼 클릭 시 Extension으로 초기화 요청 메시지 전송
+		initBtn.addEventListener('click', () => {
+			vscode.postMessage({ type: 'initRequested' });
 		});
 
 		// 변환 버튼 클릭 시 Extension으로 변환 요청 메시지 전송

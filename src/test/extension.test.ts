@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import type { ExtensionApi } from '../extension.js';
-import type { WebviewMessage, ConvertRequestedMessage } from '../ui/MainPanel.js';
+import type { WebviewMessage, ConvertRequestedMessage, InitRequestedMessage } from '../ui/MainPanel.js';
 import type { AgentSettingsMessage, AgentSettingsCliPathMessage, AgentSettingsExtraArgsMessage } from '../ui/AgentSettingsView.js';
 
 // Extension ID — package.json의 publisher.name 형식
@@ -997,6 +997,71 @@ suite('Extension Test Suite', () => {
 			MainPanel.getInputValue(),
 			testInput,
 			'inputChanged 메시지 수신 후 입력값이 저장되어야 합니다.'
+		);
+	});
+
+	// F-007: 메인 패널 HTML에 init-project-btn 버튼이 포함되어 있는지 검증
+	test('F-007: 메인 패널 HTML에 init-project-btn 버튼이 있어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// HTML에 Init Project 버튼이 포함되어 있는지 확인
+		const html = MainPanel.getHtmlForTest();
+		assert.ok(
+			html.includes('id="init-project-btn"'),
+			'메인 패널 HTML에 id="init-project-btn" 버튼이 포함되어 있어야 합니다.'
+		);
+	});
+
+	// F-007: initRequested 메시지 수신 시 패널이 running 상태로 전환되는지 검증
+	test('F-007: initRequested 메시지 수신 시 isRunning이 true로 설정되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel, InitService } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// InitService가 ExtensionApi에 노출되어 있는지 확인 (번들 내 내장 상수 포함 검증)
+		assert.ok(InitService, 'InitService가 ExtensionApi에 노출되어 있어야 합니다.');
+
+		// 초기 상태: 실행 중이 아님
+		MainPanel.setRunning(false);
+		assert.strictEqual(MainPanel.isRunningForTest(), false, '초기 상태에서 isRunning은 false여야 합니다.');
+
+		// 실제 CLI를 실행하지 않도록 setOnInitRequested 콜백을 빈 함수로 덮어쓰기
+		// (테스트 환경에서는 실제 CLI 에이전트를 실행할 수 없으므로 콜백만 등록)
+		MainPanel.setOnInitRequested(() => {
+			// 테스트용 no-op 콜백 — 실제 InitService.run()을 실행하지 않음
+		});
+
+		// initRequested 메시지 시뮬레이션 — 사용자가 Init Project 버튼을 클릭하는 상황 재현
+		const message: WebviewMessage = { type: 'initRequested' };
+		MainPanel.simulateWebviewMessage(message);
+
+		// initRequested 처리 후 isRunning이 true로 설정되어야 한다
+		assert.strictEqual(
+			MainPanel.isRunningForTest(),
+			true,
+			'initRequested 메시지 수신 후 isRunning이 true여야 합니다.'
 		);
 	});
 
