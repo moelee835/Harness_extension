@@ -445,8 +445,8 @@
       "성공 메시지나 파일 목록이 표시되지 않는지 확인한다",
       "콘솔 Output 패널에도 오류 내용이 기록되는지 확인한다"
     ],
-    "passes": false,
-    "implemented_in_commit": null,
+    "passes": true,
+    "implemented_in_commit": "75c1fa6f59c703a74592d355bf4efa4be3f3339d",
     "notes": ""
   },
   {

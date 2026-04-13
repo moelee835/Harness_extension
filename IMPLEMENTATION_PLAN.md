@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 20개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-027, F-028, F-029, F-030, F-031, F-032, F-034)
-- 마지막 커밋: eeb417d feat(F-020): CLI 에이전트 stdout/stderr 출력을 실시간 스트리밍하여 UI에 표시한다
+- 완료된 기능: 21개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: 75c1fa6 feat(F-033): 에이전트 CLI 프로세스 오류 종료 시 UI에 오류 메시지와 종료 코드 표시
 
 ## 다음 우선 작업
 
@@ -29,7 +29,7 @@
 - [x] F-018: AgentRunnerFactory returns GeminiCliRunner when agentType is 'gemini' (category: functional) — 7e082ff
 - [x] F-019: AgentRunnerFactory returns CustomCliRunner when agentType is 'custom' (category: functional) — 827a5be
 - [x] F-020: CLI agent stdout and stderr output is streamed and displayed in the UI (category: functional) — eeb417d
-- [ ] F-033: 에이전트 CLI 프로세스가 오류 코드로 종료되면 UI에 오류 메시지와 종료 코드가 표시된다 (category: functional, priority: 4)
+- [x] F-033: 에이전트 CLI 프로세스가 오류 코드로 종료되면 UI에 오류 메시지와 종료 코드가 표시된다 (category: functional, priority: 4) — 75c1fa6
 - [x] F-034: 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다 (category: functional, priority: 3) — 5262136
 - [ ] F-007: Init Project button triggers project initialization via the configured CLI agent (category: functional)
 - [ ] F-008: AnalyzerService generates a Command markdown file at .claude/commands/ (category: functional)
@@ -74,6 +74,14 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-13 — Ralph Loop 세션 15 (Coding Agent)
+
+- F-033: 에이전트 CLI 오류 종료 시 UI 오류 메시지 표시 기능 구현
+  - src/ui/MainPanel.ts: _errorMessage 필드, showError()/getErrorMessageForTest() 정적 메서드 추가
+  - src/ui/MainPanel.ts: setRunning(true) 시 _errorMessage 초기화, #error-message HTML div 추가 (붉은 오류 스타일)
+  - src/test/extension.test.ts: F-033 테스트 2건 추가 (showError() HTML 표시, invoke() reject 종료 코드 검증)
+  - 31 passing (기존 29 + F-033 2건)
 
 ### 2026-04-13 — Ralph Loop 세션 14 (Coding Agent)
 
