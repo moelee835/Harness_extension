@@ -6,6 +6,8 @@ import type { IAgentRunner } from './IAgentRunner.js';
 import { ClaudeCodeRunner } from './ClaudeCodeRunner.js';
 // Gemini CLI 실행기 가져오기
 import { GeminiCliRunner } from './GeminiCliRunner.js';
+// 사용자 지정 CLI 실행기 가져오기
+import { CustomCliRunner } from './CustomCliRunner.js';
 
 /**
  * AgentConfig 설정에 따라 적절한 IAgentRunner 구현체를 생성하여 반환하는 팩토리 클래스.
@@ -13,7 +15,7 @@ import { GeminiCliRunner } from './GeminiCliRunner.js';
  * 지원하는 에이전트 타입:
  * - 'claude': ClaudeCodeRunner 반환 (F-017)
  * - 'gemini': GeminiCliRunner 반환 (F-018)
- * - 'custom': CustomCliRunner 반환 (F-019 — 미구현)
+ * - 'custom': CustomCliRunner 반환 (F-019)
  *
  * OCP(Open-Closed Principle) 준수:
  * 새 에이전트 타입 추가 시 switch 케이스만 확장하면 되므로 기존 코드 수정 불필요.
@@ -26,7 +28,7 @@ export class AgentRunnerFactory {
 	 * extraArgs는 공백 기준으로 split하여 배열로 변환한 후 Runner에 전달한다.
 	 *
 	 * @returns 현재 설정에 맞는 IAgentRunner 구현체
-	 * @throws Error - 지원하지 않는 agentType인 경우 (F-018, F-019 구현 전 'gemini'/'custom' 요청 시)
+	 * @throws Error - 지원하지 않는 agentType인 경우
 	 */
 	public static create(): IAgentRunner {
 		// 현재 설정에서 에이전트 타입, CLI 경로, 추가 플래그 읽기
@@ -48,8 +50,8 @@ export class AgentRunnerFactory {
 				return new GeminiCliRunner(cliPath, extraArgs);
 
 			case 'custom':
-				// TODO: F-019 — CustomCliRunner 구현 후 교체
-				throw new Error('CustomCliRunner는 F-019에서 구현 예정입니다.');
+				// F-019: 사용자 지정 CLI 실행기 반환 — cliPath에 지정된 경로를 그대로 사용
+				return new CustomCliRunner(cliPath, extraArgs);
 
 			default: {
 				// agentType이 추가되었지만 factory에 케이스가 없는 경우 방어

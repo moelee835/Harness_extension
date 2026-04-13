@@ -648,6 +648,80 @@ suite('Extension Test Suite', () => {
 		await config.update('cliPath', '', vscode.ConfigurationTarget.Global);
 	});
 
+	// F-019: agentType이 'custom'일 때 AgentRunnerFactory.create()가 CustomCliRunner를 반환하는지 검증
+	test('F-019: AgentRunnerFactory.create()가 custom 타입에 CustomCliRunner를 반환해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// agentType을 'custom'으로 설정, cliPath를 사용자 지정 경로로 설정
+		const customPath = '/usr/local/bin/my-agent';
+		const config = vscode.workspace.getConfiguration('agentHarness');
+		await config.update('agentType', 'custom', vscode.ConfigurationTarget.Global);
+		await config.update('cliPath', customPath, vscode.ConfigurationTarget.Global);
+		await config.update('extraArgs', '', vscode.ConfigurationTarget.Global);
+
+		const { AgentRunnerFactory, CustomCliRunner } = ext.exports;
+
+		// AgentRunnerFactory.create()가 CustomCliRunner 인스턴스를 반환하는지 확인
+		const runner = AgentRunnerFactory.create();
+		assert.ok(
+			runner instanceof CustomCliRunner,
+			'agentType이 custom일 때 CustomCliRunner 인스턴스가 반환되어야 합니다.'
+		);
+
+		// spawn 명령이 설정된 cliPath인지 확인 — CustomCliRunner는 기본값 없이 cliPath를 그대로 사용
+		assert.strictEqual(
+			runner.getSpawnCommand(),
+			customPath,
+			`cliPath가 설정된 경우 spawn 명령이 ${customPath}여야 합니다.`
+		);
+
+		// 정리: 기본값으로 복원
+		await config.update('agentType', 'claude', vscode.ConfigurationTarget.Global);
+		await config.update('cliPath', '', vscode.ConfigurationTarget.Global);
+	});
+
+	// F-019: cliPath가 빈 문자열일 때 CustomCliRunner의 spawn 명령이 빈 문자열을 그대로 사용하는지 검증
+	test('F-019: cliPath가 빈 문자열이면 CustomCliRunner spawn 명령이 빈 문자열이어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// agentType을 'custom'으로 설정, cliPath는 빈 문자열 (사용자가 경로를 미입력한 상태)
+		const config = vscode.workspace.getConfiguration('agentHarness');
+		await config.update('agentType', 'custom', vscode.ConfigurationTarget.Global);
+		await config.update('cliPath', '', vscode.ConfigurationTarget.Global);
+		await config.update('extraArgs', '', vscode.ConfigurationTarget.Global);
+
+		const { AgentRunnerFactory, CustomCliRunner } = ext.exports;
+
+		// AgentRunnerFactory.create()가 CustomCliRunner 인스턴스를 반환하는지 확인
+		const runner = AgentRunnerFactory.create();
+		assert.ok(
+			runner instanceof CustomCliRunner,
+			'agentType이 custom일 때 CustomCliRunner 인스턴스가 반환되어야 합니다.'
+		);
+
+		// cliPath가 빈 문자열이면 spawn 명령도 빈 문자열 — 사용자가 경로를 설정하지 않은 상태
+		assert.strictEqual(
+			runner.getSpawnCommand(),
+			'',
+			'cliPath가 빈 문자열이면 spawn 명령도 빈 문자열이어야 합니다.'
+		);
+
+		// 정리: 기본값으로 복원
+		await config.update('agentType', 'claude', vscode.ConfigurationTarget.Global);
+	});
+
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
 	test('F-005: inputChanged 메시지 수신 시 입력값이 저장되어야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득
