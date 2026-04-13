@@ -1,9 +1,9 @@
 # IMPLEMENTATION_PLAN.md
 
-## 현재 상태 (마지막 업데이트: 2026-04-13)
+## 현재 상태 (마지막 업데이트: 2026-04-14)
 
-- 완료된 기능: 21개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: 75c1fa6 feat(F-033): 에이전트 CLI 프로세스 오류 종료 시 UI에 오류 메시지와 종료 코드 표시
+- 완료된 기능: 22개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: 5e4e038 feat(F-007): Init Project 버튼 클릭 시 설정된 CLI 에이전트를 통해 프로젝트 초기화 트리거
 
 ## 다음 우선 작업
 
@@ -31,7 +31,7 @@
 - [x] F-020: CLI agent stdout and stderr output is streamed and displayed in the UI (category: functional) — eeb417d
 - [x] F-033: 에이전트 CLI 프로세스가 오류 코드로 종료되면 UI에 오류 메시지와 종료 코드가 표시된다 (category: functional, priority: 4) — 75c1fa6
 - [x] F-034: 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다 (category: functional, priority: 3) — 5262136
-- [ ] F-007: Init Project button triggers project initialization via the configured CLI agent (category: functional)
+- [x] F-007: Init Project button triggers project initialization via the configured CLI agent (category: functional) — 5e4e038
 - [ ] F-008: AnalyzerService generates a Command markdown file at .claude/commands/ (category: functional)
 - [ ] F-009: AnalyzerService generates a Skill markdown file (category: functional)
 - [ ] F-010: AnalyzerService generates an MCP server spec file (category: functional)
@@ -74,6 +74,16 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-14 — Ralph Loop 세션 16 (Coding Agent)
+
+- F-007: Init Project 버튼 클릭 시 CLI 에이전트를 통한 프로젝트 초기화 기능 구현
+  - src/service/prompts/initClaudeProject.ts 신규 생성 — vibe_context/init-claude-project.md를 TypeScript 상수로 번들에 내장
+  - src/service/InitService.ts 신규 생성 — IAgentRunner DI, 내장 프롬프트로 invoke(), .claude/ 재귀 스캔 후 InitResult 반환
+  - src/ui/MainPanel.ts: InitRequestedMessage 타입, init-project-btn 버튼, #success-message 영역, showSuccess()/setOnInitRequested() 메서드 추가
+  - src/extension.ts: InitService import, ExtensionApi 노출, openMainPanel 핸들러에 setOnInitRequested 콜백 등록
+  - src/test/extension.test.ts: F-007 테스트 2건 추가 (HTML 버튼 검증, initRequested→isRunning 검증)
+  - 33 passing (기존 31 + F-007 2건)
 
 ### 2026-04-13 — Ralph Loop 세션 15 (Coding Agent)
 

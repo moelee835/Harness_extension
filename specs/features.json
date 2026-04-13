@@ -94,7 +94,8 @@
       "Verify .claude/ directory and required harness files are created in the workspace",
       "Verify a success message and list of created files are shown in the UI"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "5e4e038"
   },
   {
     "id": "F-008",
