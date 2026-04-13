@@ -869,6 +869,102 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(outputLines[1], stderrText, '두 번째 항목이 stderr 텍스트여야 합니다.');
 	});
 
+	// F-033: showError() 호출 시 HTML에 오류 메시지가 표시되는지 검증
+	test('F-033: showError() 호출 시 HTML에 error-message 영역이 표시되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 기본 상태: 오류 메시지가 없으므로 #error-message가 숨겨져 있어야 함
+		const initialHtml = MainPanel.getHtmlForTest();
+		assert.ok(
+			initialHtml.includes('id="error-message" style="display:none"'),
+			'기본 상태에서 오류 메시지 영역은 숨겨져 있어야 합니다.'
+		);
+		assert.strictEqual(MainPanel.getErrorMessageForTest(), '', '기본 상태에서 오류 메시지는 빈 문자열이어야 합니다.');
+
+		// 오류 표시 — 종료 코드를 포함한 오류 메시지 설정
+		const errorText = '에이전트 CLI 프로세스가 종료 코드 1로 종료되었습니다.';
+		MainPanel.showError(errorText);
+
+		// 오류 메시지가 올바르게 설정되었는지 확인
+		assert.strictEqual(
+			MainPanel.getErrorMessageForTest(),
+			errorText,
+			'showError() 호출 후 오류 메시지가 저장되어야 합니다.'
+		);
+
+		// HTML에 오류 메시지 영역이 표시되는지 확인 (display:none 없어야 함)
+		const errorHtml = MainPanel.getHtmlForTest();
+		assert.ok(
+			!errorHtml.includes('id="error-message" style="display:none"'),
+			'showError() 후 오류 메시지 영역이 표시되어야 합니다(display:none 없어야 함).'
+		);
+		assert.ok(
+			errorHtml.includes('id="error-message"'),
+			'HTML에 id="error-message" 요소가 포함되어 있어야 합니다.'
+		);
+
+		// showError() 후 isRunning()이 false로 설정되는지 확인 (프로세스 종료 상태 반영)
+		assert.strictEqual(
+			MainPanel.isRunningForTest(),
+			false,
+			'showError() 호출 후 isRunning()은 false여야 합니다.'
+		);
+	});
+
+	// F-033: runner.invoke()가 오류 종료 코드를 포함한 오류 메시지로 reject되는지 검증
+	test('F-033: runner.invoke()가 오류 코드로 종료 시 종료 코드를 포함한 오류로 reject되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { CustomCliRunner } = ext.exports;
+
+		// node -e "process.exit(1)" — 즉시 종료 코드 1로 종료하는 프로세스
+		// CustomCliRunner에서 extraArgs는 프롬프트 앞에 삽입되므로 이 방식으로 -e 플래그를 전달
+		const runner = new CustomCliRunner('node', ['-e', 'process.exit(1)']);
+
+		let caughtError: Error | null = null;
+		try {
+			// 종료 코드 1로 종료하는 프로세스를 실행 — reject가 기대됨
+			await runner.invoke('');
+		} catch (err: unknown) {
+			caughtError = err as Error;
+		}
+
+		// 오류가 발생했는지 확인
+		assert.ok(caughtError !== null, '오류 코드로 종료 시 invoke()가 오류를 throw해야 합니다.');
+
+		// 오류 메시지에 종료 코드가 포함되어 있는지 확인
+		const errorMessage = caughtError?.message ?? '';
+		assert.ok(
+			errorMessage.includes('1'),
+			`오류 메시지에 종료 코드 '1'이 포함되어 있어야 합니다. 실제 메시지: "${errorMessage}"`
+		);
+
+		// 오류 발생 후 isRunning()이 false인지 확인
+		assert.strictEqual(
+			runner.isRunning(),
+			false,
+			'오류로 종료된 후 isRunning()은 false여야 합니다.'
+		);
+	});
+
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
 	test('F-005: inputChanged 메시지 수신 시 입력값이 저장되어야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

@@ -103,6 +103,13 @@ export class MainPanel {
 	private _outputLines: string[] = [];
 
 	/**
+	 * 에이전트 CLI 프로세스가 오류 코드로 종료되었을 때 표시할 오류 메시지.
+	 * showError() 호출 시 설정되고, setRunning(true) 호출 시 초기화된다.
+	 * F-033: 오류 메시지와 종료 코드를 UI에 표시하는 데 사용된다.
+	 */
+	private _errorMessage: string = '';
+
+	/**
 	 * MainPanel 생성자 — 외부에서 직접 호출하지 말 것.
 	 * 패널 생성은 반드시 `MainPanel.show()` 정적 메서드를 통해 수행한다.
 	 *
@@ -166,8 +173,9 @@ export class MainPanel {
 		if (MainPanel.currentPanel) {
 			MainPanel.currentPanel._isRunning = running;
 			if (running) {
-				// 새 실행 시작 시 이전 상태 메시지 초기화
+				// 새 실행 시작 시 이전 상태 메시지 및 오류 메시지 초기화
 				MainPanel.currentPanel._statusMessage = '';
+				MainPanel.currentPanel._errorMessage = '';
 			}
 			// HTML 재생성으로 취소 버튼 가시성 갱신
 			MainPanel.currentPanel._update();
@@ -253,6 +261,33 @@ export class MainPanel {
 	 */
 	public static getMarkdownValue(): string {
 		return MainPanel.currentPanel?._markdownValue ?? '';
+	}
+
+	/**
+	 * 에이전트 CLI 프로세스가 오류 코드로 종료되었을 때 UI에 오류 메시지를 표시한다.
+	 * 오류 메시지는 별도의 오류 영역(#error-message)에 붉은 색 경고 스타일로 렌더링된다.
+	 * F-033: invoke()가 reject될 때 Extension 커맨드 핸들러가 이 메서드를 호출한다.
+	 *
+	 * @param message - 표시할 오류 메시지 문자열 (종료 코드 포함 권장)
+	 */
+	public static showError(message: string): void {
+		if (MainPanel.currentPanel) {
+			// 오류 메시지 저장 및 실행 상태 해제
+			MainPanel.currentPanel._errorMessage = message;
+			MainPanel.currentPanel._isRunning = false;
+			// HTML 재생성으로 오류 영역 가시성 갱신
+			MainPanel.currentPanel._update();
+		}
+	}
+
+	/**
+	 * 현재 설정된 오류 메시지를 반환한다.
+	 * F-033: 테스트에서 showError() 호출 후 오류 메시지가 올바르게 설정되었는지 검증하는 데 사용한다.
+	 *
+	 * @returns 오류 메시지 문자열 (오류가 없거나 패널이 없으면 빈 문자열)
+	 */
+	public static getErrorMessageForTest(): string {
+		return MainPanel.currentPanel?._errorMessage ?? '';
 	}
 
 	/**
@@ -364,6 +399,10 @@ export class MainPanel {
 		const statusMsgStyle = this._statusMessage ? '' : ' style="display:none"';
 		// 상태 메시지 XSS 방지를 위해 HTML 이스케이프 처리
 		const escapedStatusMessage = this._escapeHtml(this._statusMessage);
+		// F-033: 오류 메시지 가시성 — 오류가 있을 때만 표시
+		const errorMsgStyle = this._errorMessage ? '' : ' style="display:none"';
+		// 오류 메시지 XSS 방지를 위해 HTML 이스케이프 처리
+		const escapedErrorMessage = this._escapeHtml(this._errorMessage);
 
 		return /* html */`<!DOCTYPE html>
 <html lang="ko">
@@ -471,6 +510,16 @@ export class MainPanel {
 			font-size: var(--vscode-font-size);
 		}
 
+		/* F-033: 오류 메시지 영역 — 프로세스 비정상 종료 시 오류 코드와 함께 표시 */
+		#error-message {
+			margin-top: 12px;
+			padding: 8px 12px;
+			background-color: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+			color: var(--vscode-inputValidation-errorForeground, #f48771);
+			border: 1px solid var(--vscode-inputValidation-errorBorder, #f48771);
+			font-size: var(--vscode-font-size);
+		}
+
 		/* F-020: CLI 에이전트 출력 영역 — 스크롤 가능한 터미널 스타일 */
 		#output-area {
 			margin-top: 16px;
@@ -513,6 +562,9 @@ export class MainPanel {
 
 	<!-- F-034: 상태 메시지 영역 — 취소 완료 또는 오류 발생 시 메시지 표시 -->
 	<div id="status-message"${statusMsgStyle}>${escapedStatusMessage}</div>
+
+	<!-- F-033: 오류 메시지 영역 — 에이전트 CLI 프로세스가 오류 코드로 종료될 때 표시 -->
+	<div id="error-message"${errorMsgStyle}>${escapedErrorMessage}</div>
 
 	<!-- F-020: CLI 에이전트 stdout/stderr 실시간 출력 영역 -->
 	<div id="output-area"></div>
