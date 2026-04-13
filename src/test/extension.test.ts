@@ -722,6 +722,88 @@ suite('Extension Test Suite', () => {
 		await config.update('agentType', 'claude', vscode.ConfigurationTarget.Global);
 	});
 
+	// F-034: UI에서 취소 버튼 표시 및 cancelRequested 메시지 처리 검증
+	test('F-034: setRunning(true) 시 취소 버튼이 표시되고, cancelRequested 처리 후 취소 완료 메시지가 표시되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 기본 상태: isRunning=false이고 HTML에 cancel-btn이 숨겨져 있어야 함
+		const initialHtml = MainPanel.getHtmlForTest();
+		assert.ok(
+			initialHtml.includes('id="cancel-btn"'),
+			'HTML에 id="cancel-btn" 요소가 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			initialHtml.includes('id="cancel-btn" style="display:none"'),
+			'기본 상태에서 취소 버튼은 숨겨져 있어야 합니다.'
+		);
+		assert.strictEqual(MainPanel.isRunningForTest(), false, '기본 상태에서 isRunning()은 false여야 합니다.');
+
+		// 실행 중 상태로 전환 — 취소 버튼이 표시되어야 함
+		MainPanel.setRunning(true);
+		assert.strictEqual(MainPanel.isRunningForTest(), true, 'setRunning(true) 후 isRunning()이 true여야 합니다.');
+
+		const runningHtml = MainPanel.getHtmlForTest();
+		assert.ok(
+			!runningHtml.includes('id="cancel-btn" style="display:none"'),
+			'실행 중일 때 취소 버튼이 표시되어야 합니다(display:none 없어야 함).'
+		);
+
+		// 취소 요청 시뮬레이션 — isRunning=false, 취소 완료 메시지 설정
+		const cancelMessage: WebviewMessage = { type: 'cancelRequested' };
+		MainPanel.simulateWebviewMessage(cancelMessage);
+
+		// 취소 후 검증
+		assert.strictEqual(MainPanel.isRunningForTest(), false, '취소 후 isRunning()이 false여야 합니다.');
+		const statusMsg = MainPanel.getStatusMessageForTest();
+		assert.ok(statusMsg.includes('취소'), `취소 후 상태 메시지에 '취소'가 포함되어야 합니다. 실제값: "${statusMsg}"`);
+	});
+
+	// F-034: runner.cancel()이 실행 중인 프로세스를 종료하는지 검증
+	test('F-034: runner.cancel()이 실행 중인 프로세스를 종료해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { CustomCliRunner } = ext.exports;
+
+		// 초기 상태 검증 — 프로세스가 실행되기 전에는 isRunning()이 false여야 함
+		const runner = new CustomCliRunner('node', ['-e', 'setTimeout(()=>{},30000)']);
+		assert.strictEqual(runner.isRunning(), false, '초기 상태에서 isRunning()은 false여야 합니다.');
+
+		// invoke()를 await 없이 실행하여 백그라운드에서 장시간 실행 프로세스 시작
+		// node -e "setTimeout(()=>{},30000)" 은 30초 동안 대기하는 프로세스이므로 취소 테스트에 적합
+		let invokeDone = false;
+		runner.invoke('').then(() => { invokeDone = true; }).catch(() => { invokeDone = true; });
+
+		// 프로세스가 시작될 시간을 기다림 (300ms)
+		await new Promise<void>(resolve => setTimeout(resolve, 300));
+		assert.strictEqual(runner.isRunning(), true, 'invoke() 호출 후 isRunning()은 true여야 합니다.');
+
+		// 취소 실행 — child_process.kill()이 호출되어 프로세스가 종료되어야 함
+		runner.cancel();
+
+		// 프로세스 종료 대기 (500ms)
+		await new Promise<void>(resolve => setTimeout(resolve, 500));
+		assert.strictEqual(invokeDone, true, '취소 후 invoke() Promise가 완료(resolve 또는 reject)되어야 합니다.');
+		assert.strictEqual(runner.isRunning(), false, '취소 후 isRunning()은 false여야 합니다.');
+	});
+
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
 	test('F-005: inputChanged 메시지 수신 시 입력값이 저장되어야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

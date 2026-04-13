@@ -1,5 +1,6 @@
 // Node.js 기본 모듈 — child_process.spawn으로 CLI 에이전트 프로세스 실행
 import { spawn } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import type { IAgentRunner } from './IAgentRunner.js';
 
 /**
@@ -25,6 +26,20 @@ export class ClaudeCodeRunner implements IAgentRunner {
 	private readonly _extraArgs: string[];
 
 	/**
+	 * 현재 실행 중인 child_process 인스턴스.
+	 * invoke() 호출 시 설정되고, 프로세스 종료 또는 cancel() 호출 시 null로 초기화된다.
+	 * F-034: cancel() 호출 시 이 참조를 통해 프로세스를 종료한다.
+	 */
+	private _childProcess: ChildProcess | null = null;
+
+	/**
+	 * 현재 에이전트 프로세스 실행 여부.
+	 * invoke() 호출 시 true, 프로세스 종료 시 false로 변경된다.
+	 * F-034: isRunning()을 통해 외부에서 조회 가능하다.
+	 */
+	private _isRunning: boolean = false;
+
+	/**
 	 * ClaudeCodeRunner 생성자.
 	 *
 	 * @param cliPath - Claude Code CLI 실행 파일의 절대 경로.
@@ -45,6 +60,29 @@ export class ClaudeCodeRunner implements IAgentRunner {
 	 */
 	public getSpawnCommand(): string {
 		return this._spawnCommand;
+	}
+
+	/**
+	 * 현재 에이전트 프로세스가 실행 중인지 여부를 반환한다.
+	 * F-034: UI에서 취소 버튼 표시 여부 결정 및 테스트 검증에 사용된다.
+	 *
+	 * @returns 프로세스가 실행 중이면 true, 그렇지 않으면 false
+	 */
+	public isRunning(): boolean {
+		return this._isRunning;
+	}
+
+	/**
+	 * 현재 실행 중인 Claude Code CLI 프로세스를 즉시 종료한다.
+	 * 실행 중인 프로세스가 없으면 아무 동작도 하지 않는다.
+	 * F-034: UI의 '취소' 버튼 클릭 시 Extension이 이 메서드를 호출한다.
+	 */
+	public cancel(): void {
+		if (this._childProcess !== null) {
+			// SIGTERM 신호를 보내 프로세스를 종료한다.
+			// 프로세스 종료 후 close 이벤트에서 _isRunning과 _childProcess가 초기화된다.
+			this._childProcess.kill();
+		}
 	}
 
 	/**
@@ -69,9 +107,18 @@ export class ClaudeCodeRunner implements IAgentRunner {
 				shell: false,
 			});
 
-			// 프로세스 종료 이벤트 처리
+			// 실행 상태 플래그 설정 및 프로세스 참조 저장
+			this._isRunning = true;
+			this._childProcess = child;
+
+			// 프로세스 종료 이벤트 처리 (정상 종료, 오류 종료, 취소 종료 모두 포함)
 			child.on('close', (code: number | null) => {
+				// 종료 원인과 무관하게 실행 상태 해제
+				this._isRunning = false;
+				this._childProcess = null;
+
 				if (code === 0 || code === null) {
+					// 정상 종료 또는 SIGTERM(null) 종료 시 resolve
 					resolve();
 				} else {
 					// 비정상 종료 시 종료 코드를 포함한 오류를 상위로 전달
@@ -81,6 +128,9 @@ export class ClaudeCodeRunner implements IAgentRunner {
 
 			// 프로세스 시작 오류 처리 (실행 파일을 찾을 수 없는 경우 등)
 			child.on('error', (err: Error) => {
+				// 프로세스 시작 실패 시에도 실행 상태 해제
+				this._isRunning = false;
+				this._childProcess = null;
 				reject(new Error(`Claude Code CLI 프로세스 시작 실패: ${err.message}`));
 			});
 		});

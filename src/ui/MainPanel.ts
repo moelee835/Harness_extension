@@ -24,11 +24,22 @@ export interface ConvertRequestedMessage {
 }
 
 /**
+ * 웹뷰에서 Extension으로 전달되는 에이전트 취소 요청 메시지.
+ * 사용자가 '취소' 버튼을 클릭할 때 웹뷰 스크립트가 이 형식으로 postMessage를 호출한다.
+ * F-034: 실행 중인 에이전트 프로세스 취소 요청.
+ */
+export interface CancelRequestedMessage {
+	/** 메시지 종류 식별자 */
+	type: 'cancelRequested';
+}
+
+/**
  * 웹뷰에서 Extension으로 전달되는 메시지 유니온 타입.
  * F-005: 입력값 변경 메시지
  * F-006: Markdown 변환 요청 메시지
+ * F-034: 에이전트 취소 요청 메시지
  */
-export type WebviewMessage = InputChangedMessage | ConvertRequestedMessage;
+export type WebviewMessage = InputChangedMessage | ConvertRequestedMessage | CancelRequestedMessage;
 
 /**
  * Agent Harness Framework의 메인 WebviewPanel을 관리하는 클래스.
@@ -69,6 +80,20 @@ export class MainPanel {
 
 	/** Markdown 변환 서비스 인스턴스 — 입력값을 Markdown 형식으로 변환하는 데 사용 */
 	private readonly _markdownConverter: MarkdownConverter = new MarkdownConverter();
+
+	/**
+	 * 현재 에이전트 프로세스 실행 여부.
+	 * true일 때 UI에 취소 버튼이 표시되며, false일 때 숨겨진다.
+	 * F-034: setRunning() 정적 메서드로 외부에서 갱신 가능하다.
+	 */
+	private _isRunning: boolean = false;
+
+	/**
+	 * 에이전트 실행 상태에 대한 사용자 표시용 상태 메시지.
+	 * 취소 완료 또는 오류 발생 시 메시지가 설정되고, 새 실행 시 초기화된다.
+	 * F-034: cancelRequested 처리 후 취소 완료 메시지가 이 필드에 저장된다.
+	 */
+	private _statusMessage: string = '';
 
 	/**
 	 * MainPanel 생성자 — 외부에서 직접 호출하지 말 것.
@@ -120,6 +145,46 @@ export class MainPanel {
 	 */
 	public static isOpen(): boolean {
 		return MainPanel.currentPanel !== undefined;
+	}
+
+	/**
+	 * 에이전트 실행 상태를 설정하고 UI를 갱신한다.
+	 * true이면 취소 버튼이 표시되고 이전 상태 메시지가 초기화된다.
+	 * false이면 취소 버튼이 숨겨진다.
+	 * F-034: 에이전트 실행 시작/종료 시 Extension이 이 메서드를 호출하여 UI를 동기화한다.
+	 *
+	 * @param running - 실행 중이면 true, 종료되었으면 false
+	 */
+	public static setRunning(running: boolean): void {
+		if (MainPanel.currentPanel) {
+			MainPanel.currentPanel._isRunning = running;
+			if (running) {
+				// 새 실행 시작 시 이전 상태 메시지 초기화
+				MainPanel.currentPanel._statusMessage = '';
+			}
+			// HTML 재생성으로 취소 버튼 가시성 갱신
+			MainPanel.currentPanel._update();
+		}
+	}
+
+	/**
+	 * 현재 에이전트 실행 상태를 반환한다.
+	 * F-034: 테스트에서 setRunning()/cancelRequested 처리 후 상태 변화를 검증하는 데 사용한다.
+	 *
+	 * @returns 실행 중이면 true, 그렇지 않으면 false
+	 */
+	public static isRunningForTest(): boolean {
+		return MainPanel.currentPanel?._isRunning ?? false;
+	}
+
+	/**
+	 * 현재 상태 메시지를 반환한다.
+	 * F-034: 테스트에서 취소 완료 메시지가 올바르게 설정되었는지 검증하는 데 사용한다.
+	 *
+	 * @returns 상태 메시지 문자열 (메시지가 없거나 패널이 없으면 빈 문자열)
+	 */
+	public static getStatusMessageForTest(): string {
+		return MainPanel.currentPanel?._statusMessage ?? '';
 	}
 
 	/**
@@ -215,6 +280,13 @@ export class MainPanel {
 			// F-006: 현재 입력값을 Markdown으로 변환하여 저장
 			// MarkdownConverter는 데이터 손실 없이 모든 입력 내용을 Markdown 형식으로 보존한다
 			this._markdownValue = this._markdownConverter.convert(this._inputValue);
+		} else if (message.type === 'cancelRequested') {
+			// F-034: 사용자가 취소 버튼을 클릭함 — 실행 상태 해제 및 취소 완료 메시지 설정
+			// 실제 프로세스 종료는 Extension 커맨드 핸들러에서 runner.cancel()로 처리 (F-007 연동 시 구현)
+			this._isRunning = false;
+			this._statusMessage = '프로세스가 취소되었습니다.';
+			// HTML 재생성으로 취소 버튼 숨기기 및 상태 메시지 표시
+			this._update();
 		}
 	}
 
@@ -237,6 +309,13 @@ export class MainPanel {
 	private _getHtmlContent(): string {
 		// 보안: 인라인 스크립트·스타일 허용을 위한 nonce 생성
 		const nonce = this._getNonce();
+
+		// F-034: 취소 버튼 가시성 — 에이전트 실행 중일 때만 표시
+		const cancelBtnStyle = this._isRunning ? '' : ' style="display:none"';
+		// F-034: 상태 메시지 가시성 — 메시지가 있을 때만 표시
+		const statusMsgStyle = this._statusMessage ? '' : ' style="display:none"';
+		// 상태 메시지 XSS 방지를 위해 HTML 이스케이프 처리
+		const escapedStatusMessage = this._escapeHtml(this._statusMessage);
 
 		return /* html */`<!DOCTYPE html>
 <html lang="ko">
@@ -317,6 +396,32 @@ export class MainPanel {
 		#convert-to-markdown-btn:hover {
 			background-color: var(--vscode-button-hoverBackground);
 		}
+
+		/* F-034: 취소 버튼 — 에이전트 실행 중일 때만 표시되는 보조 버튼 */
+		#cancel-btn {
+			padding: 6px 14px;
+			background-color: var(--vscode-button-secondaryBackground, #5f6a79);
+			color: var(--vscode-button-secondaryForeground, #ffffff);
+			border: none;
+			cursor: pointer;
+			font-family: var(--vscode-font-family);
+			font-size: var(--vscode-font-size);
+			margin-left: 8px;
+		}
+
+		#cancel-btn:hover {
+			background-color: var(--vscode-button-secondaryHoverBackground, #4e5a67);
+		}
+
+		/* F-034: 상태 메시지 영역 — 취소 완료, 오류 등 상태 정보 표시 */
+		#status-message {
+			margin-top: 12px;
+			padding: 8px 12px;
+			background-color: var(--vscode-inputValidation-infoBackground, #063b49);
+			color: var(--vscode-inputValidation-infoForeground, #d4d4d4);
+			border: 1px solid var(--vscode-inputValidation-infoBorder, #007acc);
+			font-size: var(--vscode-font-size);
+		}
 	</style>
 </head>
 <body>
@@ -334,11 +439,18 @@ export class MainPanel {
 	<!-- F-006: Markdown 변환 버튼 — 클릭 시 현재 입력값을 Markdown으로 변환하도록 Extension에 요청 -->
 	<button id="convert-to-markdown-btn">Markdown으로 변환</button>
 
+	<!-- F-034: 취소 버튼 — 에이전트 실행 중일 때만 표시, 클릭 시 실행 중인 프로세스 취소 요청 -->
+	<button id="cancel-btn"${cancelBtnStyle}>취소</button>
+
+	<!-- F-034: 상태 메시지 영역 — 취소 완료 또는 오류 발생 시 메시지 표시 -->
+	<div id="status-message"${statusMsgStyle}>${escapedStatusMessage}</div>
+
 	<script nonce="${nonce}">
 		// VSCode Webview API 초기화 — postMessage, getState, setState 사용 가능
 		const vscode = acquireVsCodeApi();
 		const textarea = document.getElementById('requirement-input');
 		const convertBtn = document.getElementById('convert-to-markdown-btn');
+		const cancelBtn = document.getElementById('cancel-btn');
 
 		// 입력값 변경 시 Extension으로 메시지 전송 — Extension 측에서 값을 저장함
 		textarea.addEventListener('input', () => {
@@ -349,9 +461,30 @@ export class MainPanel {
 		convertBtn.addEventListener('click', () => {
 			vscode.postMessage({ type: 'convertRequested' });
 		});
+
+		// F-034: 취소 버튼 클릭 시 Extension으로 취소 요청 메시지 전송
+		cancelBtn.addEventListener('click', () => {
+			vscode.postMessage({ type: 'cancelRequested' });
+		});
 	</script>
 </body>
 </html>`;
+	}
+
+	/**
+	 * HTML 특수 문자를 이스케이프하여 XSS 공격을 방지한다.
+	 * 상태 메시지 등 동적으로 생성되는 HTML 콘텐츠에 적용한다.
+	 *
+	 * @param text - 이스케이프할 원본 문자열
+	 * @returns HTML 특수 문자가 엔티티로 치환된 안전한 문자열
+	 */
+	private _escapeHtml(text: string): string {
+		return text
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
 	}
 
 	/**

@@ -5,6 +5,7 @@
  *
  * F-017, F-018, F-019: AgentRunnerFactory가 이 인터페이스를 통해
  * 각 에이전트 구현체를 반환한다.
+ * F-034: cancel()/isRunning()으로 실행 중인 프로세스 제어 지원.
  */
 export interface IAgentRunner {
 	/**
@@ -15,6 +16,21 @@ export interface IAgentRunner {
 	 * @returns 프로세스 종료 후 resolve되는 Promise
 	 */
 	invoke(prompt: string): Promise<void>;
+
+	/**
+	 * 현재 실행 중인 에이전트 프로세스를 즉시 종료한다.
+	 * 실행 중인 프로세스가 없으면 아무 동작도 하지 않는다.
+	 * F-034: UI의 '취소' 버튼 클릭 시 Extension이 이 메서드를 호출한다.
+	 */
+	cancel(): void;
+
+	/**
+	 * 현재 에이전트 프로세스가 실행 중인지 여부를 반환한다.
+	 * F-034: UI에서 취소 버튼 표시 여부 결정 및 테스트 검증에 사용된다.
+	 *
+	 * @returns 프로세스가 실행 중이면 true, 그렇지 않으면 false
+	 */
+	isRunning(): boolean;
 
 	/**
 	 * 에이전트 실행 시 사용될 CLI 명령(실행 파일 경로 또는 이름)을 반환한다.
