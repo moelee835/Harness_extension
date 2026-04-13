@@ -461,8 +461,8 @@
       "UI에 취소 완료 메시지가 표시되는지 확인한다",
       "취소 후 '취소' 버튼이 사라지고 UI가 초기 상태로 돌아오는지 확인한다"
     ],
-    "passes": false,
-    "implemented_in_commit": null,
+    "passes": true,
+    "implemented_in_commit": "52621366605b20bb02060e90577cb5070740c226",
     "notes": ""
   }
 ]

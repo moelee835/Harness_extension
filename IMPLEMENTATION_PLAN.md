@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 18개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-018, F-019, F-027, F-028, F-029, F-030, F-031, F-032)
-- 마지막 커밋: 827a5be feat(F-019): AgentRunnerFactory가 custom 타입에 CustomCliRunner를 반환하는 기능 구현
+- 완료된 기능: 19개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-018, F-019, F-027, F-028, F-029, F-030, F-031, F-032, F-034)
+- 마지막 커밋: 5262136 feat(F-034): 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다
 
 ## 다음 우선 작업
 
@@ -30,7 +30,7 @@
 - [x] F-019: AgentRunnerFactory returns CustomCliRunner when agentType is 'custom' (category: functional) — 827a5be
 - [ ] F-020: CLI agent stdout and stderr output is streamed and displayed in the UI (category: functional)
 - [ ] F-033: 에이전트 CLI 프로세스가 오류 코드로 종료되면 UI에 오류 메시지와 종료 코드가 표시된다 (category: functional, priority: 4)
-- [ ] F-034: 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다 (category: functional, priority: 3)
+- [x] F-034: 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다 (category: functional, priority: 3) — 5262136
 - [ ] F-007: Init Project button triggers project initialization via the configured CLI agent (category: functional)
 - [ ] F-008: AnalyzerService generates a Command markdown file at .claude/commands/ (category: functional)
 - [ ] F-009: AnalyzerService generates a Skill markdown file (category: functional)
@@ -74,6 +74,17 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-13 — Ralph Loop 세션 13 (Coding Agent)
+
+- F-034: 실행 중인 에이전트 프로세스 취소 기능 구현
+  - src/service/IAgentRunner.ts: cancel()/isRunning() 인터페이스 메서드 추가
+  - src/service/ClaudeCodeRunner.ts: _childProcess/_isRunning 추적, cancel()/isRunning() 구현
+  - src/service/GeminiCliRunner.ts: 동일 패턴으로 cancel()/isRunning() 구현
+  - src/service/CustomCliRunner.ts: 동일 패턴으로 cancel()/isRunning() 구현
+  - src/ui/MainPanel.ts: CancelRequestedMessage 타입, setRunning()/isRunningForTest()/getStatusMessageForTest() 정적 메서드, HTML에 취소 버튼 및 상태 메시지 영역 추가
+  - src/test/extension.test.ts: F-034 테스트 2건 추가
+  - 27 passing (기존 25 + F-034 2건)
 
 ### 2026-04-12 — configure_loop 실행
 
