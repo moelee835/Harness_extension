@@ -4,13 +4,15 @@ import { AgentConfig } from '../config/AgentConfig.js';
 import type { IAgentRunner } from './IAgentRunner.js';
 // Claude Code CLI 실행기 가져오기
 import { ClaudeCodeRunner } from './ClaudeCodeRunner.js';
+// Gemini CLI 실행기 가져오기
+import { GeminiCliRunner } from './GeminiCliRunner.js';
 
 /**
  * AgentConfig 설정에 따라 적절한 IAgentRunner 구현체를 생성하여 반환하는 팩토리 클래스.
  *
  * 지원하는 에이전트 타입:
  * - 'claude': ClaudeCodeRunner 반환 (F-017)
- * - 'gemini': GeminiCliRunner 반환 (F-018 — 미구현)
+ * - 'gemini': GeminiCliRunner 반환 (F-018)
  * - 'custom': CustomCliRunner 반환 (F-019 — 미구현)
  *
  * OCP(Open-Closed Principle) 준수:
@@ -42,8 +44,8 @@ export class AgentRunnerFactory {
 				return new ClaudeCodeRunner(cliPath, extraArgs);
 
 			case 'gemini':
-				// TODO: F-018 — GeminiCliRunner 구현 후 교체
-				throw new Error('GeminiCliRunner는 F-018에서 구현 예정입니다.');
+				// F-018: Gemini CLI 실행기 반환
+				return new GeminiCliRunner(cliPath, extraArgs);
 
 			case 'custom':
 				// TODO: F-019 — CustomCliRunner 구현 후 교체

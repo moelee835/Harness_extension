@@ -573,6 +573,81 @@ suite('Extension Test Suite', () => {
 		await config.update('cliPath', '', vscode.ConfigurationTarget.Global);
 	});
 
+	// F-018: agentType이 'gemini'일 때 AgentRunnerFactory.create()가 GeminiCliRunner를 반환하는지 검증
+	test('F-018: AgentRunnerFactory.create()가 gemini 타입에 GeminiCliRunner를 반환해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// agentType을 'gemini'로 설정 — AgentConfig.getAgentType()이 'gemini'를 반환하도록
+		const config = vscode.workspace.getConfiguration('agentHarness');
+		await config.update('agentType', 'gemini', vscode.ConfigurationTarget.Global);
+		// cliPath를 빈 문자열로 초기화 — 기본 'gemini' 명령이 사용되어야 함
+		await config.update('cliPath', '', vscode.ConfigurationTarget.Global);
+		await config.update('extraArgs', '', vscode.ConfigurationTarget.Global);
+
+		const { AgentRunnerFactory, GeminiCliRunner } = ext.exports;
+
+		// AgentRunnerFactory.create()가 GeminiCliRunner 인스턴스를 반환하는지 확인
+		const runner = AgentRunnerFactory.create();
+		assert.ok(
+			runner instanceof GeminiCliRunner,
+			'agentType이 gemini일 때 GeminiCliRunner 인스턴스가 반환되어야 합니다.'
+		);
+
+		// spawn 명령이 'gemini'인지 확인 — cliPath가 빈 문자열이면 기본값 'gemini' 사용
+		assert.strictEqual(
+			runner.getSpawnCommand(),
+			'gemini',
+			'cliPath가 빈 문자열이면 spawn 명령이 gemini여야 합니다.'
+		);
+
+		// 정리: 기본값으로 복원
+		await config.update('agentType', 'claude', vscode.ConfigurationTarget.Global);
+	});
+
+	// F-018: cliPath가 설정된 경우 GeminiCliRunner의 spawn 명령이 cliPath 값을 사용하는지 검증
+	test('F-018: cliPath가 설정된 경우 GeminiCliRunner의 spawn 명령이 cliPath여야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// cliPath를 사용자 지정 경로로 설정
+		const customPath = '/usr/local/bin/gemini';
+		const config = vscode.workspace.getConfiguration('agentHarness');
+		await config.update('agentType', 'gemini', vscode.ConfigurationTarget.Global);
+		await config.update('cliPath', customPath, vscode.ConfigurationTarget.Global);
+		await config.update('extraArgs', '', vscode.ConfigurationTarget.Global);
+
+		const { AgentRunnerFactory, GeminiCliRunner } = ext.exports;
+
+		// AgentRunnerFactory.create()가 GeminiCliRunner 인스턴스를 반환하는지 확인
+		const runner = AgentRunnerFactory.create();
+		assert.ok(
+			runner instanceof GeminiCliRunner,
+			'agentType이 gemini일 때 GeminiCliRunner 인스턴스가 반환되어야 합니다.'
+		);
+
+		// spawn 명령이 설정된 cliPath인지 확인
+		assert.strictEqual(
+			runner.getSpawnCommand(),
+			customPath,
+			`cliPath가 설정된 경우 spawn 명령이 ${customPath}여야 합니다.`
+		);
+
+		// 정리: 기본값으로 복원
+		await config.update('agentType', 'claude', vscode.ConfigurationTarget.Global);
+		await config.update('cliPath', '', vscode.ConfigurationTarget.Global);
+	});
+
 	// F-005: 웹뷰에서 inputChanged 메시지 수신 시 입력값이 Extension에 저장되는지 검증
 	test('F-005: inputChanged 메시지 수신 시 입력값이 저장되어야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

@@ -8,6 +8,8 @@ import { AgentSettingsView } from './ui/AgentSettingsView.js';
 import { AgentRunnerFactory } from './service/AgentRunnerFactory.js';
 // Claude Code 실행기 클래스 가져오기 — 테스트에서 instanceof 검증에 사용
 import { ClaudeCodeRunner } from './service/ClaudeCodeRunner.js';
+// Gemini CLI 실행기 클래스 가져오기 — 테스트에서 instanceof 검증에 사용
+import { GeminiCliRunner } from './service/GeminiCliRunner.js';
 
 /** Extension activate() 반환 타입 — 테스트에서 내부 상태 접근 시 사용 */
 export interface ExtensionApi {
@@ -19,6 +21,8 @@ export interface ExtensionApi {
 	AgentRunnerFactory: typeof AgentRunnerFactory;
 	/** 테스트에서 instanceof ClaudeCodeRunner 검증에 사용 */
 	ClaudeCodeRunner: typeof ClaudeCodeRunner;
+	/** 테스트에서 instanceof GeminiCliRunner 검증에 사용 */
+	GeminiCliRunner: typeof GeminiCliRunner;
 }
 
 /**
@@ -67,7 +71,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable, openAgentSettingsDisposable);
 
 	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.XXX 형태로 접근 가능
-	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner };
+	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner, GeminiCliRunner };
 }
 
 /**
