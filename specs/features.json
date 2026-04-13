@@ -228,7 +228,8 @@
       "Invoke the runner with a test prompt",
       "Verify child_process.spawn is called with 'claude' as the command"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "d75fc59a3b2a9826fa1b61d9efdd335c0ad27a7f"
   },
   {
     "id": "F-018",

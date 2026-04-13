@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 15개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-027, F-028, F-029, F-030, F-031, F-032)
-- 마지막 커밋: c185362 feat(F-006): 사용자 입력 데이터 Markdown 변환 기능 구현
+- 완료된 기능: 16개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-027, F-028, F-029, F-030, F-031, F-032)
+- 마지막 커밋: d75fc59 feat(F-017): AgentRunnerFactory가 claude 타입에 ClaudeCodeRunner를 반환하는 기능 구현
 
 ## 다음 우선 작업
 
@@ -25,7 +25,7 @@
 - [x] F-016: User can set extra CLI flags in agent settings (category: functional) — b4913fa
 - [x] F-027: Agent settings are persisted across VSCode sessions (category: functional) — 379290d
 - [x] F-006: User input data is converted to Markdown format for agent consumption (category: functional) — c185362
-- [ ] F-017: AgentRunnerFactory returns ClaudeCodeRunner when agentType is 'claude' (category: functional)
+- [x] F-017: AgentRunnerFactory returns ClaudeCodeRunner when agentType is 'claude' (category: functional) — d75fc59
 - [ ] F-018: AgentRunnerFactory returns GeminiCliRunner when agentType is 'gemini' (category: functional)
 - [ ] F-019: AgentRunnerFactory returns CustomCliRunner when agentType is 'custom' (category: functional)
 - [ ] F-020: CLI agent stdout and stderr output is streamed and displayed in the UI (category: functional)
@@ -81,6 +81,17 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 10 (Coding Agent)
+
+- F-017: AgentRunnerFactory + ClaudeCodeRunner 구현
+  - src/service/IAgentRunner.ts 신규 생성 — invoke(prompt)/getSpawnCommand() 인터페이스
+  - src/service/ClaudeCodeRunner.ts 신규 생성 — IAgentRunner 구현체, child_process.spawn('claude',...) 호출
+  - src/service/AgentRunnerFactory.ts 신규 생성 — AgentConfig 기반 팩토리, 'claude' → ClaudeCodeRunner
+  - src/extension.ts — ExtensionApi에 AgentRunnerFactory, ClaudeCodeRunner 추가
+  - src/test/extension.test.ts — F-017 테스트 2건 추가 (instanceof 검증, cliPath 빈 값 → 'claude', cliPath 지정 값 검증)
+  - .vscode-test.mjs — Mocha timeout 2000ms → 10000ms (디스크 I/O 통합 테스트 안정화)
+  - 21 passing (기존 20 + F-017 2건에서, 실제로는 두 F-017 테스트를 추가했지만 19→21)
 
 ### 2026-04-13 — Ralph Loop 세션 9 (Coding Agent)
 
