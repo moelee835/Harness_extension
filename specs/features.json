@@ -270,7 +270,8 @@
       "Verify stderr messages are shown with a distinct error style",
       "Verify the output area scrolls to the latest line automatically"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "eeb417d8cd9ae50f18c089ed2478106d3b6887fd"
   },
   {
     "id": "F-021",

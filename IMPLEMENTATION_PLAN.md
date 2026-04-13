@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 19개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-018, F-019, F-027, F-028, F-029, F-030, F-031, F-032, F-034)
-- 마지막 커밋: 5262136 feat(F-034): 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다
+- 완료된 기능: 20개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-027, F-028, F-029, F-030, F-031, F-032, F-034)
+- 마지막 커밋: eeb417d feat(F-020): CLI 에이전트 stdout/stderr 출력을 실시간 스트리밍하여 UI에 표시한다
 
 ## 다음 우선 작업
 
@@ -28,7 +28,7 @@
 - [x] F-017: AgentRunnerFactory returns ClaudeCodeRunner when agentType is 'claude' (category: functional) — d75fc59
 - [x] F-018: AgentRunnerFactory returns GeminiCliRunner when agentType is 'gemini' (category: functional) — 7e082ff
 - [x] F-019: AgentRunnerFactory returns CustomCliRunner when agentType is 'custom' (category: functional) — 827a5be
-- [ ] F-020: CLI agent stdout and stderr output is streamed and displayed in the UI (category: functional)
+- [x] F-020: CLI agent stdout and stderr output is streamed and displayed in the UI (category: functional) — eeb417d
 - [ ] F-033: 에이전트 CLI 프로세스가 오류 코드로 종료되면 UI에 오류 메시지와 종료 코드가 표시된다 (category: functional, priority: 4)
 - [x] F-034: 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다 (category: functional, priority: 3) — 5262136
 - [ ] F-007: Init Project button triggers project initialization via the configured CLI agent (category: functional)
@@ -74,6 +74,17 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-13 — Ralph Loop 세션 14 (Coding Agent)
+
+- F-020: CLI 에이전트 stdout/stderr 실시간 스트리밍 및 UI 표시 구현
+  - src/service/IAgentRunner.ts: invoke() 시그니처에 onStdout/onStderr 선택적 콜백 추가
+  - src/service/ClaudeCodeRunner.ts: child.stdout/stderr 'data' 이벤트로 콜백 호출
+  - src/service/GeminiCliRunner.ts: 동일 패턴 구현
+  - src/service/CustomCliRunner.ts: 동일 패턴 구현
+  - src/ui/MainPanel.ts: #output-area div, .stderr-text 스타일, appendOutput()/getOutputForTest()/clearOutputForTest() 정적 메서드, 웹뷰 스크립트에 appendOutput 메시지 핸들러 추가
+  - src/test/extension.test.ts: F-020 테스트 2건 추가
+  - 29 passing (기존 27 + F-020 2건)
 
 ### 2026-04-13 — Ralph Loop 세션 13 (Coding Agent)
 
