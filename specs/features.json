@@ -242,7 +242,8 @@
       "Invoke the runner with a test prompt",
       "Verify child_process.spawn is called with 'gemini' as the command"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "7e082ff0e906647f706afa0ca447b37a7187e232"
   },
   {
     "id": "F-019",
