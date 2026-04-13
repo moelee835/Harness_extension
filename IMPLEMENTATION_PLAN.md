@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-13)
 
-- 완료된 기능: 17개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-018, F-027, F-028, F-029, F-030, F-031, F-032)
-- 마지막 커밋: 7e082ff feat(F-018): AgentRunnerFactory가 gemini 타입에 GeminiCliRunner를 반환하는 기능 구현
+- 완료된 기능: 18개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-014, F-015, F-016, F-017, F-018, F-019, F-027, F-028, F-029, F-030, F-031, F-032)
+- 마지막 커밋: 827a5be feat(F-019): AgentRunnerFactory가 custom 타입에 CustomCliRunner를 반환하는 기능 구현
 
 ## 다음 우선 작업
 
@@ -27,7 +27,7 @@
 - [x] F-006: User input data is converted to Markdown format for agent consumption (category: functional) — c185362
 - [x] F-017: AgentRunnerFactory returns ClaudeCodeRunner when agentType is 'claude' (category: functional) — d75fc59
 - [x] F-018: AgentRunnerFactory returns GeminiCliRunner when agentType is 'gemini' (category: functional) — 7e082ff
-- [ ] F-019: AgentRunnerFactory returns CustomCliRunner when agentType is 'custom' (category: functional)
+- [x] F-019: AgentRunnerFactory returns CustomCliRunner when agentType is 'custom' (category: functional) — 827a5be
 - [ ] F-020: CLI agent stdout and stderr output is streamed and displayed in the UI (category: functional)
 - [ ] F-033: 에이전트 CLI 프로세스가 오류 코드로 종료되면 UI에 오류 메시지와 종료 코드가 표시된다 (category: functional, priority: 4)
 - [ ] F-034: 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다 (category: functional, priority: 3)
@@ -81,6 +81,15 @@
 - 생성된 파일: AGENTS.md, IMPLEMENTATION_PLAN.md, PROMPT_plan.md, PROMPT_build.md, loop.sh
 - specs/features.json: 34개 항목 전체 passes: false (구현 미시작)
 - 현재 src/extension.ts에는 scaffold 수준의 helloWorld 커맨드만 존재
+
+### 2026-04-13 — Ralph Loop 세션 12 (Coding Agent)
+
+- F-019: AgentRunnerFactory + CustomCliRunner 구현
+  - src/service/CustomCliRunner.ts 신규 생성 — IAgentRunner 구현체, cliPath 그대로 spawn 명령으로 사용 (기본값 없음)
+  - src/service/AgentRunnerFactory.ts — 'custom' 케이스 TODO throw 제거, CustomCliRunner 반환으로 교체
+  - src/extension.ts — ExtensionApi에 CustomCliRunner 추가
+  - src/test/extension.test.ts — F-019 테스트 2건 추가 (cliPath 설정 검증, 빈 문자열 처리 검증)
+  - 25 passing (기존 23 + F-019 2건)
 
 ### 2026-04-13 — Ralph Loop 세션 11 (Coding Agent)
 

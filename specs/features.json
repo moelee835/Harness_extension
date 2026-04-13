@@ -256,7 +256,8 @@
       "Invoke the runner with a test prompt",
       "Verify child_process.spawn is called with the user-specified cliPath"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "827a5befee4d834a78a79fe53e9223b6164a892c"
   },
   {
     "id": "F-020",
