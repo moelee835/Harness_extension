@@ -16,6 +16,8 @@ import { CustomCliRunner } from './service/CustomCliRunner.js';
 import { InitService } from './service/InitService.js';
 // 파일 영속성 관리 클래스 가져오기 — F-021~F-025: .md 파일 CRUD 담당
 import { FileManager } from './persistence/FileManager.js';
+// 요구사항 분석 서비스 가져오기 — F-008~F-012: CLI sub-agent를 통해 .md 파일 생성
+import { AnalyzerService } from './service/AnalyzerService.js';
 
 /** Extension activate() 반환 타입 — 테스트에서 내부 상태 접근 시 사용 */
 export interface ExtensionApi {
@@ -35,6 +37,8 @@ export interface ExtensionApi {
 	InitService: typeof InitService;
 	/** 테스트에서 FileManager 인스턴스 생성 및 파일 CRUD 동작을 검증하기 위해 노출 */
 	FileManager: typeof FileManager;
+	/** 테스트에서 AnalyzerService 인스턴스 생성 및 generateCommand() 동작을 검증하기 위해 노출 */
+	AnalyzerService: typeof AnalyzerService;
 }
 
 /**
@@ -107,7 +111,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable, openAgentSettingsDisposable);
 
 	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.XXX 형태로 접근 가능
-	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner, GeminiCliRunner, CustomCliRunner, InitService, FileManager };
+	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner, GeminiCliRunner, CustomCliRunner, InitService, FileManager, AnalyzerService };
 }
 
 /**

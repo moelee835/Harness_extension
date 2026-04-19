@@ -6,6 +6,7 @@ import * as fs from 'fs/promises';
 import type { ExtensionApi } from '../extension.js';
 import type { WebviewMessage, ConvertRequestedMessage, InitRequestedMessage } from '../ui/MainPanel.js';
 import type { AgentSettingsMessage, AgentSettingsCliPathMessage, AgentSettingsExtraArgsMessage } from '../ui/AgentSettingsView.js';
+import type { IAgentRunner } from '../service/IAgentRunner.js';
 
 // Extension ID — package.json의 publisher.name 형식
 const EXTENSION_ID = 'undefined-publisher.agent-harness-framework';
@@ -1100,6 +1101,170 @@ suite('Extension Test Suite', () => {
 		} finally {
 			// 테스트 후 임시 파일 정리
 			await fs.unlink(testFilePath).catch(() => { /* 이미 삭제된 경우 무시 */ });
+		}
+	});
+
+	// F-008: AnalyzerService.generateCommand()가 CLI 에이전트를 호출하고
+	// commandsDir에 커맨드 .md 파일을 생성하는지 검증
+	test('F-008: AnalyzerService.generateCommand()가 CLI 에이전트를 호출하고 .claude/commands/에 파일을 생성해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 commandsDir 생성 (.claude/commands/ 역할)
+		const commandsDir = path.join(os.tmpdir(), `test-commands-f008-${Date.now()}`);
+		await fs.mkdir(commandsDir, { recursive: true });
+
+		// 스텁 IAgentRunner — invoke() 호출 시 미리 정의된 커맨드 .md 내용을 onStdout으로 전달
+		let invokeWasCalled = false;
+		const stubCommandContent = [
+			'---',
+			'name: test-command',
+			'description: 테스트용 커맨드입니다.',
+			'---',
+			'',
+			'# test-command',
+			'',
+			'## 역할',
+			'테스트 커맨드의 역할을 수행합니다.',
+			'',
+			'## 수행 단계',
+			'1. 첫 번째 단계를 실행한다',
+			'2. 두 번째 단계를 실행한다',
+		].join('\n');
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				// invoke()가 호출되었음을 기록
+				invokeWasCalled = true;
+				// 스텁 출력을 onStdout 콜백으로 전달 (실제 CLI 출력 시뮬레이션)
+				if (onStdout) {
+					onStdout(stubCommandContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			// FileManager와 스텁 러너로 AnalyzerService 인스턴스 생성
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			// generateCommand() 호출 — commandsDir에 test-command.md가 생성되어야 한다
+			const result = await analyzerService.generateCommand(
+				'# 테스트 커맨드\n\n테스트용 커맨드를 생성해 주세요.',
+				commandsDir,
+			);
+
+			// CLI 에이전트(runner.invoke())가 호출되었는지 확인
+			assert.strictEqual(
+				invokeWasCalled,
+				true,
+				'AnalyzerService.generateCommand()이 CLI 에이전트(runner.invoke())를 호출해야 합니다.',
+			);
+
+			// 생성된 파일 경로가 commandsDir/test-command.md인지 확인
+			const expectedFilePath = path.join(commandsDir, 'test-command.md');
+			assert.strictEqual(
+				result.filePath,
+				expectedFilePath,
+				'생성된 파일 경로가 commandsDir/test-command.md여야 합니다.',
+			);
+
+			// 파일이 실제로 존재하고 비어 있지 않은지 확인
+			const fileContent = await fs.readFile(expectedFilePath, 'utf-8');
+			assert.ok(fileContent.length > 0, '생성된 파일이 비어있지 않아야 합니다.');
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(commandsDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
+	// F-008: 생성된 커맨드 파일이 커맨드 이름, 설명, 수행 단계를 포함하는지 검증
+	test('F-008: 생성된 커맨드 파일이 커맨드 이름, 설명, 수행 단계를 포함해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 commandsDir 생성
+		const commandsDir = path.join(os.tmpdir(), `test-commands-f008b-${Date.now()}`);
+		await fs.mkdir(commandsDir, { recursive: true });
+
+		// 커맨드 이름, 설명, 수행 단계를 포함하는 스텁 출력 정의
+		const stubCommandContent = [
+			'---',
+			'name: analyze-requirements',
+			'description: 요구사항을 분석하여 스펙 문서를 생성합니다.',
+			'---',
+			'',
+			'# analyze-requirements',
+			'',
+			'## 역할',
+			'사용자의 요구사항을 분석하여 상세 스펙을 생성합니다.',
+			'',
+			'## 수행 단계',
+			'1. 요구사항 문서를 읽는다',
+			'2. 핵심 기능을 추출한다',
+			'3. 스펙 문서를 작성한다',
+		].join('\n');
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				if (onStdout) {
+					onStdout(stubCommandContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			const result = await analyzerService.generateCommand(
+				'요구사항 분석 커맨드를 만들어 주세요.',
+				commandsDir,
+			);
+
+			// 생성된 파일 내용 직접 읽어 검증
+			const fileContent = await fs.readFile(result.filePath, 'utf-8');
+
+			// 파일에 커맨드 이름이 포함되어 있는지 확인
+			assert.ok(
+				fileContent.includes('analyze-requirements'),
+				'생성된 커맨드 파일에 커맨드 이름(analyze-requirements)이 포함되어야 합니다.',
+			);
+
+			// 파일에 커맨드 설명이 포함되어 있는지 확인
+			assert.ok(
+				fileContent.includes('요구사항을 분석하여 스펙 문서를 생성합니다'),
+				'생성된 커맨드 파일에 커맨드 설명이 포함되어야 합니다.',
+			);
+
+			// 파일에 수행 단계 섹션이 포함되어 있는지 확인
+			assert.ok(
+				fileContent.includes('수행 단계'),
+				'생성된 커맨드 파일에 수행 단계 섹션이 포함되어야 합니다.',
+			);
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(commandsDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
 		}
 	});
 
