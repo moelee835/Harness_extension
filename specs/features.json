@@ -343,7 +343,8 @@
       "Verify non-.md files are excluded from the result",
       "Verify an empty array is returned for a directory with no .md files"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "12033540d1279aadc78247775fad5aebcb57a3f8"
   },
   {
     "id": "F-026",

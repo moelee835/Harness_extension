@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-20)
 
-- 완료된 기능: 32개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-013, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-022, F-023, F-024, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: 6129eb1 feat(F-024): FileManager.delete()가 지정된 경로의 .md 파일을 삭제한다
+- 완료된 기능: 33개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-013, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-022, F-023, F-024, F-025, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: 1203354 feat(F-025): FileManager.list()가 디렉토리의 .md 파일 경로 목록을 반환한다
 
 ## 다음 우선 작업
 
@@ -42,7 +42,7 @@
 - [x] F-022: FileManager reads a .md file from a specified path (category: functional) — f51135b
 - [x] F-023: FileManager updates (overwrites) a .md file at a specified path (category: functional) — ec39718
 - [x] F-024: FileManager deletes a .md file at a specified path (category: functional) — 6129eb1
-- [ ] F-025: FileManager lists all .md files in a specified directory (category: functional)
+- [x] F-025: FileManager lists all .md files in a specified directory (category: functional) — 1203354
 - [ ] F-026: UI displays the list of files created or modified after an agent action completes (category: functional)
 
 ## 구현 순서 가이드
@@ -74,6 +74,14 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-20 — Ralph Loop 세션 27 (Coding Agent)
+
+- F-025: FileManager.list()가 디렉토리의 .md 파일 경로 목록을 반환한다
+  - src/test/extension.test.ts: F-025 테스트 2건 추가
+    - .md 2개 + .txt 1개 생성 후 list() 결과가 .md 2개만 포함하는지 검증
+    - 빈 디렉토리에서 빈 배열 반환 검증
+  - 55 passing (기존 53 + F-025 2건)
 
 ### 2026-04-20 — Ralph Loop 세션 26 (Coding Agent)
 
