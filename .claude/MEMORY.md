@@ -7,8 +7,8 @@ Claude Code의 작업 메모리 파일입니다. 세션이 시작될 때 읽고,
 ## Current State
 
 - Project initialized: 2026-04-07
-- Last session: 2026-04-20 (Ralph Loop 세션 20 — F-010 AnalyzerService.generateMcpServerSpec() 구현)
-- Status: **26/34 기능 완료**. 다음: F-011 (훅 설정 항목 생성) ~ F-013, F-022~F-026
+- Last session: 2026-04-20 (Ralph Loop 세션 21 — F-011 AnalyzerService.generateHookEntry() 구현)
+- Status: **27/34 기능 완료**. 다음: F-012 (서브에이전트 .md 파일 생성), F-013, F-022~F-026
 - GitHub remote: https://github.com/moelee835/Harness_extension.git (main 브랜치, **36커밋 미push**)
 - 리포트: `.claude/report/work_history/history_2026-04-19.md` 생성 완료
 
