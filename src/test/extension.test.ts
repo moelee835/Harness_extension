@@ -1268,6 +1268,165 @@ suite('Extension Test Suite', () => {
 		}
 	});
 
+	// F-009: AnalyzerService.generateSkill()가 CLI 에이전트를 호출하고
+	// skillsDir에 스킬 .md 파일을 생성하는지 검증
+	test('F-009: AnalyzerService.generateSkill()가 CLI 에이전트를 호출하고 .claude/skills/에 파일을 생성해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 skillsDir 생성 (.claude/skills/ 역할)
+		const skillsDir = path.join(os.tmpdir(), `test-skills-f009-${Date.now()}`);
+		await fs.mkdir(skillsDir, { recursive: true });
+
+		// 스텁 IAgentRunner — invoke() 호출 시 미리 정의된 스킬 .md 내용을 onStdout으로 전달
+		let invokeWasCalled = false;
+		const stubSkillContent = [
+			'---',
+			'name: test-skill',
+			'description: 테스트용 스킬입니다.',
+			'---',
+			'',
+			'## 트리거 조건',
+			'사용자가 스킬 테스트를 요청할 때 실행됩니다.',
+			'',
+			'## 동작 설명',
+			'테스트 스킬의 동작을 수행합니다.',
+		].join('\n');
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				// invoke()가 호출되었음을 기록
+				invokeWasCalled = true;
+				// 스텁 출력을 onStdout 콜백으로 전달 (실제 CLI 출력 시뮬레이션)
+				if (onStdout) {
+					onStdout(stubSkillContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			// FileManager와 스텁 러너로 AnalyzerService 인스턴스 생성
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			// generateSkill() 호출 — skillsDir에 test-skill.md가 생성되어야 한다
+			const result = await analyzerService.generateSkill(
+				'# 테스트 스킬\n\n테스트용 스킬을 생성해 주세요.',
+				skillsDir,
+			);
+
+			// CLI 에이전트(runner.invoke())가 호출되었는지 확인
+			assert.strictEqual(
+				invokeWasCalled,
+				true,
+				'AnalyzerService.generateSkill()이 CLI 에이전트(runner.invoke())를 호출해야 합니다.',
+			);
+
+			// 생성된 파일 경로가 skillsDir/test-skill.md인지 확인
+			const expectedFilePath = path.join(skillsDir, 'test-skill.md');
+			assert.strictEqual(
+				result.filePath,
+				expectedFilePath,
+				'생성된 파일 경로가 skillsDir/test-skill.md여야 합니다.',
+			);
+
+			// 파일이 실제로 존재하고 비어 있지 않은지 확인
+			const fileContent = await fs.readFile(expectedFilePath, 'utf-8');
+			assert.ok(fileContent.length > 0, '생성된 파일이 비어있지 않아야 합니다.');
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(skillsDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
+	// F-009: 생성된 스킬 파일이 트리거 조건과 동작 설명을 포함하는지 검증
+	test('F-009: 생성된 스킬 파일이 트리거 조건과 동작 설명을 포함해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 skillsDir 생성
+		const skillsDir = path.join(os.tmpdir(), `test-skills-f009b-${Date.now()}`);
+		await fs.mkdir(skillsDir, { recursive: true });
+
+		// 트리거 조건과 동작 설명을 포함하는 스텁 출력 정의
+		const stubSkillContent = [
+			'---',
+			'name: review-code',
+			'description: 코드 리뷰를 자동으로 수행합니다.',
+			'---',
+			'',
+			'## 트리거 조건',
+			'사용자가 코드 리뷰를 요청하거나 PR을 작성할 때 실행됩니다.',
+			'',
+			'## 동작 설명',
+			'1. 변경된 파일 목록을 확인한다',
+			'2. 코드 품질 기준에 따라 검토한다',
+			'3. 리뷰 코멘트를 작성한다',
+		].join('\n');
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				if (onStdout) {
+					onStdout(stubSkillContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			const result = await analyzerService.generateSkill(
+				'코드 리뷰 스킬을 만들어 주세요.',
+				skillsDir,
+			);
+
+			// 생성된 파일 내용 직접 읽어 검증
+			const fileContent = await fs.readFile(result.filePath, 'utf-8');
+
+			// 파일에 스킬 이름이 포함되어 있는지 확인
+			assert.ok(
+				fileContent.includes('review-code'),
+				'생성된 스킬 파일에 스킬 이름(review-code)이 포함되어야 합니다.',
+			);
+
+			// 파일에 트리거 조건 섹션이 포함되어 있는지 확인
+			assert.ok(
+				fileContent.includes('트리거 조건'),
+				'생성된 스킬 파일에 트리거 조건 섹션이 포함되어야 합니다.',
+			);
+
+			// 파일에 동작 설명 섹션이 포함되어 있는지 확인
+			assert.ok(
+				fileContent.includes('동작 설명'),
+				'생성된 스킬 파일에 동작 설명 섹션이 포함되어야 합니다.',
+			);
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(skillsDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
 	// F-021: 부모 디렉토리가 존재하지 않으면 FileManager.create()가 Error를 던지는지 검증
 	test('F-021: 부모 디렉토리가 없으면 FileManager.create()가 Error를 던져야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

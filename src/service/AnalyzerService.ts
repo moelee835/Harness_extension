@@ -17,6 +17,17 @@ export interface CommandAnalysisResult {
 }
 
 /**
+ * AnalyzerService.generateSkill() 호출 결과를 담는 객체.
+ * 생성된 스킬 파일의 절대 경로와 파일 내용을 포함한다.
+ */
+export interface SkillAnalysisResult {
+	/** 생성된 스킬 .md 파일의 절대 경로 */
+	filePath: string;
+	/** 파일에 기록된 Markdown 내용 */
+	content: string;
+}
+
+/**
  * CLI 에이전트(sub-agent)를 통해 요구사항을 분석하고 결과물(.md 파일)을 생성하는 서비스.
  *
  * F-008: 커맨드 .md 파일 생성 (.claude/commands/)
@@ -90,7 +101,7 @@ export class AnalyzerService {
 		const content = stdoutChunks.join('');
 
 		// YAML frontmatter에서 커맨드 이름 추출
-		const commandName = this._extractCommandName(content);
+		const commandName = this._extractName(content);
 		if (commandName === null) {
 			throw new Error(
 				'CLI 에이전트 출력에서 커맨드 이름(name 필드)을 추출할 수 없습니다. ' +
@@ -100,6 +111,69 @@ export class AnalyzerService {
 
 		// 파일 저장 경로: commandsDir/<커맨드-이름>.md
 		const filePath = path.join(commandsDir, `${commandName}.md`);
+
+		// FileManager를 통해 파일 생성
+		await this._fileManager.create(filePath, content);
+
+		return { filePath, content };
+	}
+
+	/**
+	 * Markdown 형식의 요구사항 입력을 받아 CLI 에이전트(sub-agent)를 통해
+	 * 스킬 .md 파일을 지정된 디렉토리에 생성한다.
+	 *
+	 * F-009: CLI 에이전트가 stdout으로 출력한 Markdown(YAML frontmatter 포함)을
+	 * 파싱하여 name 필드를 스킬 이름으로 사용하고,
+	 * skillsDir/<스킬-이름>.md 경로에 파일을 생성한다.
+	 *
+	 * 에이전트 출력 형식 예시:
+	 * ```
+	 * ---
+	 * name: my-skill
+	 * description: 스킬 설명
+	 * ---
+	 *
+	 * ## 트리거 조건
+	 * ...
+	 *
+	 * ## 동작 설명
+	 * ...
+	 * ```
+	 *
+	 * @param markdownInput - 스킬을 설명하는 Markdown 형식의 요구사항 문자열
+	 * @param skillsDir - 생성될 파일을 저장할 디렉토리 절대 경로 (통상 .claude/skills/)
+	 * @returns 생성된 파일 경로와 내용을 담은 결과 객체
+	 * @throws CLI 에이전트 출력에서 스킬 이름을 추출할 수 없으면 Error를 던진다
+	 */
+	public async generateSkill(
+		markdownInput: string,
+		skillsDir: string,
+	): Promise<SkillAnalysisResult> {
+		// CLI 에이전트에게 전달할 프롬프트 구성
+		const prompt = this._buildSkillPrompt(markdownInput);
+
+		// CLI 에이전트(sub-agent) 호출 — stdout 청크를 배열로 수집
+		const stdoutChunks: string[] = [];
+		await this._runner.invoke(
+			prompt,
+			(chunk) => stdoutChunks.push(chunk),
+			undefined,
+		);
+
+		// 수집된 stdout 전체를 파일 내용으로 사용
+		const content = stdoutChunks.join('');
+
+		// YAML frontmatter에서 스킬 이름 추출
+		const skillName = this._extractName(content);
+		if (skillName === null) {
+			throw new Error(
+				'CLI 에이전트 출력에서 스킬 이름(name 필드)을 추출할 수 없습니다. ' +
+				'에이전트 출력이 YAML frontmatter(name: <이름>)를 포함해야 합니다.',
+			);
+		}
+
+		// 파일 저장 경로: skillsDir/<스킬-이름>.md
+		const filePath = path.join(skillsDir, `${skillName}.md`);
 
 		// FileManager를 통해 파일 생성
 		await this._fileManager.create(filePath, content);
@@ -142,13 +216,46 @@ export class AnalyzerService {
 	}
 
 	/**
+	 * CLI 에이전트에게 전달할 스킬 생성 프롬프트를 구성한다.
+	 * 에이전트는 YAML frontmatter(name 필드 포함), 트리거 조건, 동작 설명 Markdown을
+	 * stdout으로 출력해야 한다.
+	 *
+	 * @param markdownInput - 사용자가 입력한 요구사항 Markdown 문자열
+	 * @returns CLI 에이전트에게 전달할 프롬프트 문자열
+	 */
+	private _buildSkillPrompt(markdownInput: string): string {
+		return [
+			'다음 요구사항을 분석하여 Claude Code 스킬 파일을 생성하세요.',
+			'',
+			'출력 형식은 반드시 YAML frontmatter를 포함한 Markdown이어야 합니다:',
+			'',
+			'---',
+			'name: <스킬-이름> (영문 소문자와 하이픈만 허용)',
+			'description: <스킬 한 줄 설명>',
+			'---',
+			'',
+			'## 트리거 조건',
+			'<이 스킬이 실행되어야 하는 조건이나 상황>',
+			'',
+			'## 동작 설명',
+			'<스킬이 수행해야 할 동작과 절차>',
+			'',
+			'---',
+			'',
+			'요구사항:',
+			markdownInput,
+		].join('\n');
+	}
+
+	/**
 	 * CLI 에이전트가 출력한 Markdown 문자열에서
 	 * YAML frontmatter의 name 필드 값을 추출한다.
+	 * generateCommand(), generateSkill() 등에서 공통으로 사용한다.
 	 *
 	 * @param content - CLI 에이전트가 stdout으로 출력한 전체 Markdown 문자열
-	 * @returns 추출된 커맨드 이름 문자열. 없으면 null 반환.
+	 * @returns 추출된 이름 문자열. 없으면 null 반환.
 	 */
-	private _extractCommandName(content: string): string | null {
+	private _extractName(content: string): string | null {
 		// YAML frontmatter에서 "name: <값>" 패턴을 멀티라인 정규식으로 추출
 		const nameMatch = /^name:\s*(.+)$/m.exec(content);
 		if (!nameMatch || !nameMatch[1]) {
