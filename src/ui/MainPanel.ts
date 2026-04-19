@@ -44,13 +44,26 @@ export interface InitRequestedMessage {
 }
 
 /**
+ * 웹뷰에서 Extension으로 전달되는 파일 열기 요청 메시지.
+ * 사용자가 에이전트 액션 완료 후 표시되는 파일 목록에서 파일 항목을 클릭할 때 전송된다.
+ * F-026: Extension이 vscode.commands.executeCommand('vscode.open', ...)로 파일을 여는 트리거.
+ */
+export interface OpenFileMessage {
+	/** 메시지 종류 식별자 */
+	type: 'openFile';
+	/** 열 파일의 절대 경로 */
+	filePath: string;
+}
+
+/**
  * 웹뷰에서 Extension으로 전달되는 메시지 유니온 타입.
  * F-005: 입력값 변경 메시지
  * F-006: Markdown 변환 요청 메시지
  * F-034: 에이전트 취소 요청 메시지
  * F-007: 프로젝트 초기화 요청 메시지
+ * F-026: 파일 열기 요청 메시지
  */
-export type WebviewMessage = InputChangedMessage | ConvertRequestedMessage | CancelRequestedMessage | InitRequestedMessage;
+export type WebviewMessage = InputChangedMessage | ConvertRequestedMessage | CancelRequestedMessage | InitRequestedMessage | OpenFileMessage;
 
 /**
  * Agent Harness Framework의 메인 WebviewPanel을 관리하는 클래스.
@@ -119,6 +132,13 @@ export class MainPanel {
 	 * F-033: 오류 메시지와 종료 코드를 UI에 표시하는 데 사용된다.
 	 */
 	private _errorMessage: string = '';
+
+	/**
+	 * 에이전트 액션 완료 후 생성 또는 수정된 파일 경로 목록.
+	 * showFileList() 호출 시 설정되며, HTML에 클릭 가능한 파일 항목 목록으로 렌더링된다.
+	 * F-026: FileManager.list()가 반환한 경로 배열을 저장하고 UI에 표시한다.
+	 */
+	private _fileList: string[] = [];
 
 	/**
 	 * 프로젝트 초기화 완료 후 표시할 성공 메시지.
@@ -318,6 +338,31 @@ export class MainPanel {
 	}
 
 	/**
+	 * 에이전트 액션 완료 후 생성 또는 수정된 파일 목록을 UI에 표시한다.
+	 * 각 파일 항목은 클릭 시 VSCode 편집기에서 열리는 버튼으로 렌더링된다.
+	 * F-026: agent action 완료 후 FileManager.list()의 결과를 UI에 전달하는 진입점.
+	 *
+	 * @param files - 표시할 파일 절대 경로 배열
+	 */
+	public static showFileList(files: string[]): void {
+		if (MainPanel.currentPanel) {
+			// 파일 목록 저장 및 HTML 갱신
+			MainPanel.currentPanel._fileList = [...files];
+			MainPanel.currentPanel._update();
+		}
+	}
+
+	/**
+	 * 현재 저장된 파일 목록을 반환한다.
+	 * F-026: 테스트에서 showFileList() 호출 후 파일 목록이 올바르게 저장되었는지 검증하는 데 사용한다.
+	 *
+	 * @returns 파일 경로 배열 (목록이 없거나 패널이 없으면 빈 배열)
+	 */
+	public static getFileListForTest(): string[] {
+		return MainPanel.currentPanel?._fileList ?? [];
+	}
+
+	/**
 	 * 프로젝트 초기화 완료 성공 메시지와 생성된 파일 목록을 UI에 표시한다.
 	 * 성공 메시지는 별도의 성공 영역(#success-message)에 초록 색 스타일로 렌더링된다.
 	 * F-007: InitService.run()이 완료된 후 Extension 커맨드 핸들러가 이 메서드를 호출한다.
@@ -451,6 +496,10 @@ export class MainPanel {
 			if (MainPanel._onInitRequested) {
 				MainPanel._onInitRequested();
 			}
+		} else if (message.type === 'openFile') {
+			// F-026: 사용자가 파일 목록에서 항목을 클릭함 — VSCode 편집기에서 해당 파일 열기
+			// vscode.open 명령을 사용하여 파일 URI를 기본 편집기로 열어 파일 경로가 외부로 노출되지 않도록 처리
+			vscode.commands.executeCommand('vscode.open', vscode.Uri.file(message.filePath));
 		}
 	}
 
@@ -490,6 +539,16 @@ export class MainPanel {
 		const successMsgStyle = this._successMessage ? '' : ' style="display:none"';
 		// 성공 메시지 XSS 방지를 위해 HTML 이스케이프 처리 (줄 바꿈은 <br>로 변환)
 		const escapedSuccessMessage = this._escapeHtml(this._successMessage).replace(/\n/g, '<br>');
+		// F-026: 파일 목록 가시성 — 파일이 1개 이상일 때만 표시
+		const fileListStyle = this._fileList.length > 0 ? '' : ' style="display:none"';
+		// F-026: 각 파일 경로를 클릭 가능한 버튼 항목으로 변환 (XSS 방지 이스케이프 적용)
+		const fileListItems = this._fileList
+			.map(filePath => {
+				const escaped = this._escapeHtml(filePath);
+				// data-filepath 속성으로 웹뷰 스크립트가 경로를 읽어 openFile 메시지를 전송한다
+				return `<li><button class="file-item-btn" data-filepath="${escaped}">${escaped}</button></li>`;
+			})
+			.join('\n\t\t\t');
 
 		return /* html */`<!DOCTYPE html>
 <html lang="ko">
@@ -659,6 +718,48 @@ export class MainPanel {
 		#output-area .stderr-text {
 			color: var(--vscode-terminal-ansiRed, #f44747);
 		}
+
+		/* F-026: 에이전트 액션 완료 후 생성/수정된 파일 목록 컨테이너 */
+		#file-list-container {
+			margin-top: 16px;
+		}
+
+		#file-list-container h2 {
+			font-size: 1em;
+			font-weight: 600;
+			margin-bottom: 8px;
+			color: var(--vscode-editor-foreground);
+		}
+
+		/* F-026: 파일 목록 (불릿 없는 리스트) */
+		#file-list {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+
+		#file-list li {
+			margin-bottom: 4px;
+		}
+
+		/* F-026: 각 파일 항목 버튼 — 링크처럼 보이되 VSCode 테마 색상 적용 */
+		.file-item-btn {
+			background: none;
+			border: none;
+			padding: 2px 0;
+			color: var(--vscode-textLink-foreground, #3794ff);
+			font-family: var(--vscode-editor-font-family, monospace);
+			font-size: var(--vscode-font-size);
+			cursor: pointer;
+			text-align: left;
+			text-decoration: underline;
+			word-break: break-all;
+		}
+
+		.file-item-btn:hover {
+			color: var(--vscode-textLink-activeForeground, #3794ff);
+			opacity: 0.8;
+		}
 	</style>
 </head>
 <body>
@@ -693,6 +794,14 @@ export class MainPanel {
 
 	<!-- F-020: CLI 에이전트 stdout/stderr 실시간 출력 영역 -->
 	<div id="output-area"></div>
+
+	<!-- F-026: 에이전트 액션 완료 후 생성/수정된 파일 목록 — 파일 클릭 시 VSCode 편집기에서 열림 -->
+	<div id="file-list-container"${fileListStyle}>
+		<h2>생성/수정된 파일</h2>
+		<ul id="file-list">
+			${fileListItems}
+		</ul>
+	</div>
 
 	<script nonce="${nonce}">
 		// VSCode Webview API 초기화 — postMessage, getState, setState 사용 가능
@@ -740,6 +849,21 @@ export class MainPanel {
 				}
 			}
 		});
+
+		// F-026: 파일 목록 항목 클릭 이벤트 — 이벤트 위임 방식으로 #file-list에 등록
+		// 각 버튼의 data-filepath 속성에서 경로를 읽어 Extension으로 openFile 메시지 전송
+		const fileList = document.getElementById('file-list');
+		if (fileList) {
+			fileList.addEventListener('click', (event) => {
+				const target = event.target;
+				if (target instanceof HTMLButtonElement && target.classList.contains('file-item-btn')) {
+					const filePath = target.getAttribute('data-filepath');
+					if (filePath) {
+						vscode.postMessage({ type: 'openFile', filePath });
+					}
+				}
+			});
+		}
 	</script>
 </body>
 </html>`;

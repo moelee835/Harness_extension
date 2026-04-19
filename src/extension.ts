@@ -90,10 +90,24 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 				initService.run(
 					(chunk) => MainPanel.appendOutput(chunk, false),
 					(chunk) => MainPanel.appendOutput(chunk, true),
-				).then((result) => {
+				).then(async (result) => {
 					// 성공 완료: UI에 성공 메시지와 생성된 파일 목록 표시
 					MainPanel.setRunning(false);
 					MainPanel.showSuccess(result.message, result.createdFiles);
+
+					// F-026: 에이전트 액션 완료 후 .claude/ 디렉토리의 파일 목록을 UI에 표시
+					// 워크스페이스가 없으면 목록 조회를 건너뛴다
+					const workspaceFolders = vscode.workspace.workspaceFolders;
+					if (workspaceFolders && workspaceFolders.length > 0) {
+						const claudeDir = vscode.Uri.joinPath(workspaceFolders[0].uri, '.claude').fsPath;
+						try {
+							const fileManager = new FileManager();
+							const files = await fileManager.list(claudeDir);
+							MainPanel.showFileList(files);
+						} catch {
+							// .claude/ 디렉토리가 없거나 접근 불가 시 파일 목록 표시를 생략한다
+						}
+					}
 				}).catch((err: unknown) => {
 					// 오류 발생: UI에 오류 메시지 표시
 					const errorMessage = err instanceof Error

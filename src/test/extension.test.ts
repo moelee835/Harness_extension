@@ -2331,4 +2331,93 @@ suite('Extension Test Suite', () => {
 		}
 	});
 
+	// F-026: showFileList() 호출 시 파일 경로 목록이 웹뷰 HTML에 렌더링되어야 한다
+	test('F-026: MainPanel.showFileList()가 파일 목록을 HTML에 렌더링해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 파일 목록 설정
+		const testFiles = [
+			'/workspace/.claude/MEMORY.md',
+			'/workspace/.claude/plans/PLAN.md',
+		];
+		MainPanel.showFileList(testFiles);
+
+		// getFileListForTest()로 내부 상태 확인
+		const storedList = MainPanel.getFileListForTest();
+		assert.deepStrictEqual(
+			storedList,
+			testFiles,
+			'showFileList()로 설정한 파일 목록이 내부에 저장되어 있어야 합니다.'
+		);
+
+		// HTML에 파일 경로가 포함되어 있는지 확인
+		const html = MainPanel.getHtmlForTest();
+		assert.ok(
+			html.includes('id="file-list-container"'),
+			'HTML에 id="file-list-container" 요소가 포함되어 있어야 합니다.'
+		);
+		assert.ok(
+			html.includes(testFiles[0]),
+			`HTML에 첫 번째 파일 경로 '${testFiles[0]}'가 포함되어 있어야 합니다.`
+		);
+		assert.ok(
+			html.includes(testFiles[1]),
+			`HTML에 두 번째 파일 경로 '${testFiles[1]}'가 포함되어 있어야 합니다.`
+		);
+		assert.ok(
+			html.includes('class="file-item-btn"'),
+			'각 파일 항목은 class="file-item-btn" 버튼으로 렌더링되어야 합니다.'
+		);
+	});
+
+	// F-026: 파일 목록 비어 있을 때 컨테이너가 숨겨지고, 파일 설정 시 표시되어야 한다
+	test('F-026: 파일 목록이 없으면 file-list-container가 숨겨져야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		// 메인 패널 열기
+		await vscode.commands.executeCommand('agent-harness-framework.openMainPanel');
+
+		const { MainPanel } = ext.exports;
+		assert.strictEqual(MainPanel.isOpen(), true, '패널이 열려 있어야 합니다.');
+
+		// 이전 테스트에서 남은 파일 목록을 초기화한 후 숨김 상태 확인
+		// (테스트 간 공유 상태를 명시적으로 리셋)
+		MainPanel.showFileList([]);
+		const htmlBefore = MainPanel.getHtmlForTest();
+		assert.ok(
+			htmlBefore.includes('id="file-list-container" style="display:none"'),
+			'파일 목록이 없을 때 file-list-container는 style="display:none"으로 숨겨져야 합니다.'
+		);
+
+		// 파일 목록을 설정하면 컨테이너가 표시되어야 한다
+		MainPanel.showFileList(['/workspace/.claude/MEMORY.md']);
+		const htmlAfter = MainPanel.getHtmlForTest();
+		assert.ok(
+			!htmlAfter.includes('id="file-list-container" style="display:none"'),
+			'파일 목록이 있을 때 file-list-container는 숨겨지지 않아야 합니다.'
+		);
+		assert.ok(
+			htmlAfter.includes('id="file-list-container"'),
+			'파일 목록이 있을 때 file-list-container가 HTML에 존재해야 합니다.'
+		);
+	});
+
 });
