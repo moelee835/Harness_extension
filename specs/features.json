@@ -303,7 +303,8 @@
       "Verify the returned string matches the file content",
       "Verify an error is thrown if the file does not exist"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "f51135b6a3f855c213f81cd3c28d41dfe17dac53"
   },
   {
     "id": "F-023",
