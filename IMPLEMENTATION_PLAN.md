@@ -1,9 +1,9 @@
 # IMPLEMENTATION_PLAN.md
 
-## 현재 상태 (마지막 업데이트: 2026-04-14)
+## 현재 상태 (마지막 업데이트: 2026-04-20)
 
-- 완료된 기능: 22개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: 5e4e038 feat(F-007): Init Project 버튼 클릭 시 설정된 CLI 에이전트를 통해 프로젝트 초기화 트리거
+- 완료된 기능: 23개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: fc4ad2c feat(F-021): FileManager.create()로 지정 경로에 .md 파일 생성
 
 ## 다음 우선 작업
 
@@ -38,7 +38,7 @@
 - [ ] F-011: AnalyzerService generates a hook configuration entry (category: functional)
 - [ ] F-012: AnalyzerService generates a sub-agent markdown file at .claude/agents/ (category: functional)
 - [ ] F-013: Plan view renders the current PLAN.md content as a readable stepped list (category: functional)
-- [ ] F-021: FileManager creates a new .md file at a specified path (category: functional)
+- [x] F-021: FileManager creates a new .md file at a specified path (category: functional) — fc4ad2c
 - [ ] F-022: FileManager reads a .md file from a specified path (category: functional)
 - [ ] F-023: FileManager updates (overwrites) a .md file at a specified path (category: functional)
 - [ ] F-024: FileManager deletes a .md file at a specified path (category: functional)
@@ -74,6 +74,16 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-20 — Ralph Loop 세션 17 (Coding Agent)
+
+- F-021: FileManager.create()로 지정 경로에 .md 파일 생성
+  - src/persistence/FileManager.ts 신규 생성 — vscode.workspace.fs 기반 FileManager 클래스
+    - create(): 부모 디렉토리 존재 확인 후 UTF-8 파일 신규 생성
+    - read/update/delete/list 메서드 스텁 구현 (F-022~F-025 대비)
+  - src/extension.ts: FileManager import 및 ExtensionApi 노출 추가
+  - src/test/extension.test.ts: F-021 테스트 2건 추가 (파일 생성·내용 일치, 부모없음→Error)
+  - 35 passing (기존 33 + F-021 2건)
 
 ### 2026-04-14 — Ralph Loop 세션 16 (Coding Agent)
 

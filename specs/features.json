@@ -284,7 +284,8 @@
       "Verify the file content matches the input string",
       "Verify an error is thrown if the parent directory does not exist"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "fc4ad2c"
   },
   {
     "id": "F-022",
