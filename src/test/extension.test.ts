@@ -2258,4 +2258,77 @@ suite('Extension Test Suite', () => {
 		);
 	});
 
+	// F-025: FileManager.list()가 디렉토리의 .md 파일 경로 목록을 반환하는지 검증
+	test('F-025: FileManager.list()가 디렉토리의 .md 파일 경로 목록을 반환해야 한다', async () => {
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		// 임시 테스트 디렉토리 생성
+		const tmpDir = path.join(os.tmpdir(), `test-list-f025-${Date.now()}`);
+		await fs.mkdir(tmpDir, { recursive: true });
+
+		try {
+			// .md 파일 2개와 비-.md 파일 1개 생성
+			await fs.writeFile(path.join(tmpDir, 'alpha.md'), '# Alpha', 'utf-8');
+			await fs.writeFile(path.join(tmpDir, 'beta.md'), '# Beta', 'utf-8');
+			await fs.writeFile(path.join(tmpDir, 'gamma.txt'), '텍스트 파일', 'utf-8');
+
+			const fileManager = new FileManager();
+			const result = await fileManager.list(tmpDir);
+
+			// .md 파일 2개만 반환되어야 한다
+			assert.strictEqual(result.length, 2, '.md 파일 2개만 반환되어야 합니다.');
+
+			// 반환된 경로에 .md 파일만 포함되어야 한다
+			assert.ok(
+				result.every(p => p.endsWith('.md')),
+				'반환된 모든 경로가 .md 확장자여야 합니다.'
+			);
+
+			// .txt 파일이 포함되지 않아야 한다
+			assert.ok(
+				!result.some(p => p.endsWith('.txt')),
+				'비-.md 파일이 결과에 포함되면 안 됩니다.'
+			);
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
+	// F-025: .md 파일이 없는 디렉토리에서 list() 호출 시 빈 배열을 반환해야 한다
+	test('F-025: .md 파일이 없는 디렉토리에서 FileManager.list()가 빈 배열을 반환해야 한다', async () => {
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		// 빈 임시 디렉토리 생성
+		const emptyDir = path.join(os.tmpdir(), `test-list-empty-f025-${Date.now()}`);
+		await fs.mkdir(emptyDir, { recursive: true });
+
+		try {
+			const fileManager = new FileManager();
+			const result = await fileManager.list(emptyDir);
+
+			assert.deepStrictEqual(
+				result,
+				[],
+				'.md 파일이 없는 디렉토리에서 list()는 빈 배열을 반환해야 합니다.'
+			);
+		} finally {
+			await fs.rm(emptyDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
 });
