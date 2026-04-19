@@ -174,7 +174,8 @@
       "Verify the plan steps are rendered as a numbered or checkable list",
       "Verify completed steps (checked) are visually distinct from pending steps"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "4983148f4b9d4ca692747d4c2ef43e9a50769980"
   },
   {
     "id": "F-014",

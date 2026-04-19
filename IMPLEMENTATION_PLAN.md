@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-20)
 
-- 완료된 기능: 28개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: 690e503 feat(F-012): AnalyzerService.generateSubAgent()로 .claude/agents/에 서브에이전트 .md 파일 생성
+- 완료된 기능: 29개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-013, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: 4983148 feat(F-013): PlanView가 PLAN.md 내용을 단계별 목록으로 렌더링한다
 
 ## 다음 우선 작업
 
@@ -37,7 +37,7 @@
 - [x] F-010: AnalyzerService generates an MCP server spec file (category: functional) — e3c3ce0
 - [x] F-011: AnalyzerService generates a hook configuration entry (category: functional) — 04e1db8
 - [x] F-012: AnalyzerService generates a sub-agent markdown file at .claude/agents/ (category: functional) — 690e503
-- [ ] F-013: Plan view renders the current PLAN.md content as a readable stepped list (category: functional)
+- [x] F-013: Plan view renders the current PLAN.md content as a readable stepped list (category: functional) — 4983148
 - [x] F-021: FileManager creates a new .md file at a specified path (category: functional) — fc4ad2c
 - [ ] F-022: FileManager reads a .md file from a specified path (category: functional)
 - [ ] F-023: FileManager updates (overwrites) a .md file at a specified path (category: functional)
@@ -74,6 +74,21 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-20 — Ralph Loop 세션 23 (Coding Agent)
+
+- F-013: PlanView가 PLAN.md 내용을 단계별 목록으로 렌더링한다
+  - src/service/PlanService.ts 신규 생성
+    - PlanStep/PlanSection/PlanData 인터페이스, loadPlan(), _parseContent() (## 섹션 + [x]/[ ]/- 파싱)
+  - src/ui/PlanView.ts 신규 생성
+    - 싱글톤 WebviewPanel, show(extensionUri, planData)
+    - step-completed / step-pending CSS 클래스로 완료/미완료 단계 시각 구분 (취소선 + 초록)
+    - enableScripts:false, CSP nonce 인라인 스타일만 허용
+    - getHtmlForTest()/disposeForTest()/isOpen() 테스트 보조 메서드
+  - package.json: openPlanView 명령 추가
+  - src/extension.ts: PlanService/PlanView import, openPlanView 명령 등록, ExtensionApi 노출
+  - src/test/extension.test.ts: F-013 테스트 2건 추가 (파싱 검증, HTML 클래스 렌더링 검증)
+  - 47 passing (기존 45 + F-013 2건)
 
 ### 2026-04-20 — Ralph Loop 세션 22 (Coding Agent)
 
