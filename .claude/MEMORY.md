@@ -7,9 +7,9 @@ Claude Code의 작업 메모리 파일입니다. 세션이 시작될 때 읽고,
 ## Current State
 
 - Project initialized: 2026-04-07
-- Last session: 2026-04-20 (Ralph Loop 세션 22 — F-012 AnalyzerService.generateSubAgent() 구현)
-- Status: **28/34 기능 완료**. 다음: F-013 (PlanView), F-022~F-026 (FileManager CRUD)
-- GitHub remote: https://github.com/moelee835/Harness_extension.git (main 브랜치, **36커밋 미push**)
+- Last session: 2026-04-20 (README.md 갱신 및 GitHub push 완료)
+- Status: **34/34 기능 완료 — 전체 구현 완료**. 다음: v1.0 배포 준비 (통합 테스트, .vsix 검증, CHANGELOG)
+- GitHub remote: https://github.com/moelee835/Harness_extension.git (main 브랜치, **push 완료**)
 - 리포트: `.claude/report/work_history/history_2026-04-19.md` 생성 완료
 
 ## Recent Decisions
@@ -43,11 +43,15 @@ Claude Code의 작업 메모리 파일입니다. 세션이 시작될 때 읽고,
 
 ## Known Issues
 
-- `src/persistence/FileManager.ts` 미구현 — F-021~F-026 전체 블로킹
-- `src/service/AnalyzerService.ts` 미구현 — F-008~F-012 전체 블로킹
-- `src/ui/PlanView.ts` 미구현 — F-013 블로킹
-- 워킹 트리에 `deleted: claude` 미처리 상태 — 의도 확인 후 처리 필요
-- 로컬 34개 커밋이 origin에 미push — GitHub 백업 필요
+- 워킹 트리에 `deleted: claude`, `modified: loop.sh` 미처리 상태 — 의도 확인 후 처리 필요
+- 통합 테스트(E2E) 미작성 — npm test는 통과하나 실제 에이전트 흐름 검증 필요
+
+## Next Steps (v1.0 배포 준비)
+
+1. 통합 테스트 보강 — VSCode Extension Host 환경 E2E 시나리오 검증
+2. `npm run package` → .vsix 파일 생성 및 VSCode 설치 검증
+3. CHANGELOG.md 작성 — 버전별 변경 이력 정리
+4. 사용자 가이드 문서화 — 설치·설정·사용법 스크린샷 포함
 
 ## Completed
 
