@@ -7,9 +7,10 @@ Claude Code의 작업 메모리 파일입니다. 세션이 시작될 때 읽고,
 ## Current State
 
 - Project initialized: 2026-04-07
-- Last session: 2026-04-14
-- Status: F-007 완료. 22/34 기능 구현됨. 다음: F-008 (AnalyzerService — Command markdown 생성)
-- GitHub remote: https://github.com/moelee835/Harness_extension.git (main 브랜치)
+- Last session: 2026-04-19 (/investigate_recent_changes 리포트 생성)
+- Status: **MVP 100% 달성**. 22/34 기능 완료. 다음: F-021~F-025 FileManager → F-008~F-012 AnalyzerService
+- GitHub remote: https://github.com/moelee835/Harness_extension.git (main 브랜치, **34커밋 미push**)
+- 리포트: `.claude/report/work_history/history_2026-04-19.md` 생성 완료
 
 ## Recent Decisions
 
@@ -42,7 +43,11 @@ Claude Code의 작업 메모리 파일입니다. 세션이 시작될 때 읽고,
 
 ## Known Issues
 
-- `src/` 디렉토리 스캐폴딩 미완료 — `src/extension.ts` 하나만 존재, `src/ui/`, `src/service/`, `src/persistence/` 미생성
+- `src/persistence/FileManager.ts` 미구현 — F-021~F-026 전체 블로킹
+- `src/service/AnalyzerService.ts` 미구현 — F-008~F-012 전체 블로킹
+- `src/ui/PlanView.ts` 미구현 — F-013 블로킹
+- 워킹 트리에 `deleted: claude` 미처리 상태 — 의도 확인 후 처리 필요
+- 로컬 34개 커밋이 origin에 미push — GitHub 백업 필요
 
 ## Completed
 
