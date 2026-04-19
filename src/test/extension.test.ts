@@ -1,5 +1,8 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs/promises';
 import type { ExtensionApi } from '../extension.js';
 import type { WebviewMessage, ConvertRequestedMessage, InitRequestedMessage } from '../ui/MainPanel.js';
 import type { AgentSettingsMessage, AgentSettingsCliPathMessage, AgentSettingsExtraArgsMessage } from '../ui/AgentSettingsView.js';
@@ -1062,6 +1065,75 @@ suite('Extension Test Suite', () => {
 			MainPanel.isRunningForTest(),
 			true,
 			'initRequested 메시지 수신 후 isRunning이 true여야 합니다.'
+		);
+	});
+
+	// F-021: FileManager.create()가 지정된 경로에 파일을 생성하고 내용을 정확히 기록하는지 검증
+	test('F-021: FileManager.create()가 파일을 생성하고 내용을 정확히 기록해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		// 테스트용 임시 디렉토리와 파일 경로 설정
+		const tmpDir = os.tmpdir();
+		const testFilePath = path.join(tmpDir, `test-file-manager-f021-${Date.now()}.md`);
+		const testContent = '# F-021 테스트\n\n파일 생성 검증 내용입니다.';
+
+		try {
+			// FileManager 인스턴스 생성 및 create() 호출
+			const fileManager = new FileManager();
+			await fileManager.create(testFilePath, testContent);
+
+			// 파일이 실제로 생성되었는지 확인 (fs/promises로 직접 읽어 검증)
+			const readBack = await fs.readFile(testFilePath, 'utf-8');
+			assert.strictEqual(
+				readBack,
+				testContent,
+				'FileManager.create() 후 파일 내용이 입력한 Markdown 문자열과 일치해야 합니다.'
+			);
+		} finally {
+			// 테스트 후 임시 파일 정리
+			await fs.unlink(testFilePath).catch(() => { /* 이미 삭제된 경우 무시 */ });
+		}
+	});
+
+	// F-021: 부모 디렉토리가 존재하지 않으면 FileManager.create()가 Error를 던지는지 검증
+	test('F-021: 부모 디렉토리가 없으면 FileManager.create()가 Error를 던져야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		// 존재하지 않는 부모 디렉토리 경로 설정
+		const nonExistentDir = path.join(os.tmpdir(), `non-existent-dir-${Date.now()}`);
+		const testFilePath = path.join(nonExistentDir, 'test.md');
+
+		const fileManager = new FileManager();
+
+		// create() 호출 시 Error가 발생해야 한다
+		await assert.rejects(
+			async () => fileManager.create(testFilePath, '# 테스트'),
+			(err: unknown) => {
+				assert.ok(err instanceof Error, 'Error 인스턴스가 발생해야 합니다.');
+				assert.ok(
+					err.message.includes('부모 디렉토리가 존재하지 않습니다') ||
+					err.message.includes('부모 경로'),
+					`에러 메시지가 부모 디렉토리 오류를 명시해야 합니다. 실제: ${err.message}`
+				);
+				return true;
+			},
+			'부모 디렉토리가 없을 때 FileManager.create()는 Error를 던져야 합니다.'
 		);
 	});
 

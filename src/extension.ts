@@ -14,6 +14,8 @@ import { GeminiCliRunner } from './service/GeminiCliRunner.js';
 import { CustomCliRunner } from './service/CustomCliRunner.js';
 // 프로젝트 초기화 서비스 가져오기 — F-007: Init Project 흐름을 담당
 import { InitService } from './service/InitService.js';
+// 파일 영속성 관리 클래스 가져오기 — F-021~F-025: .md 파일 CRUD 담당
+import { FileManager } from './persistence/FileManager.js';
 
 /** Extension activate() 반환 타입 — 테스트에서 내부 상태 접근 시 사용 */
 export interface ExtensionApi {
@@ -31,6 +33,8 @@ export interface ExtensionApi {
 	CustomCliRunner: typeof CustomCliRunner;
 	/** 테스트에서 InitService 생성 및 프롬프트 로딩을 검증하기 위해 노출 */
 	InitService: typeof InitService;
+	/** 테스트에서 FileManager 인스턴스 생성 및 파일 CRUD 동작을 검증하기 위해 노출 */
+	FileManager: typeof FileManager;
 }
 
 /**
@@ -103,7 +107,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable, openAgentSettingsDisposable);
 
 	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.XXX 형태로 접근 가능
-	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner, GeminiCliRunner, CustomCliRunner, InitService };
+	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner, GeminiCliRunner, CustomCliRunner, InitService, FileManager };
 }
 
 /**
