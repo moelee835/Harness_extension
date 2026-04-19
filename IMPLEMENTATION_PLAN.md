@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-20)
 
-- 완료된 기능: 27개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: 04e1db8 feat(F-011): AnalyzerService.generateHookEntry()로 .claude/settings.json에 훅 설정 항목 생성
+- 완료된 기능: 28개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: 690e503 feat(F-012): AnalyzerService.generateSubAgent()로 .claude/agents/에 서브에이전트 .md 파일 생성
 
 ## 다음 우선 작업
 
@@ -36,7 +36,7 @@
 - [x] F-009: AnalyzerService generates a Skill markdown file (category: functional) — 2a313cb
 - [x] F-010: AnalyzerService generates an MCP server spec file (category: functional) — e3c3ce0
 - [x] F-011: AnalyzerService generates a hook configuration entry (category: functional) — 04e1db8
-- [ ] F-012: AnalyzerService generates a sub-agent markdown file at .claude/agents/ (category: functional)
+- [x] F-012: AnalyzerService generates a sub-agent markdown file at .claude/agents/ (category: functional) — 690e503
 - [ ] F-013: Plan view renders the current PLAN.md content as a readable stepped list (category: functional)
 - [x] F-021: FileManager creates a new .md file at a specified path (category: functional) — fc4ad2c
 - [ ] F-022: FileManager reads a .md file from a specified path (category: functional)
@@ -74,6 +74,17 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-20 — Ralph Loop 세션 22 (Coding Agent)
+
+- F-012: AnalyzerService.generateSubAgent()로 .claude/agents/에 서브에이전트 .md 파일 생성
+  - src/service/AnalyzerService.ts
+    - SubAgentAnalysisResult 인터페이스 추가 (filePath + content)
+    - generateSubAgent(markdownInput, agentsDir): CLI sub-agent 호출 후 stdout 파싱, FileManager로 저장
+    - _buildSubAgentPrompt(): YAML frontmatter (name/description/tools) + 역할/사용도구/행동규칙 섹션 포함 프롬프트 구성
+    - _extractName() 공통 헬퍼 재사용
+  - src/test/extension.test.ts: F-012 테스트 2건 추가 (stub runner 기반)
+  - 45 passing (기존 43 + F-012 2건)
 
 ### 2026-04-20 — Ralph Loop 세션 21 (Coding Agent)
 

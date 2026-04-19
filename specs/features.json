@@ -160,7 +160,8 @@
       "Verify a new .md file is created under .claude/agents/<agent-name>/",
       "Verify the file contains the agent description, tools, and behavior rules"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "690e503a1c8cce7275c113c9cf568b6b1f6968bd"
   },
   {
     "id": "F-013",
