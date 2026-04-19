@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-20)
 
-- 완료된 기능: 26개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: e3c3ce0 feat(F-010): AnalyzerService.generateMcpServerSpec()로 MCP 서버 스펙 .json 파일 생성
+- 완료된 기능: 27개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: 04e1db8 feat(F-011): AnalyzerService.generateHookEntry()로 .claude/settings.json에 훅 설정 항목 생성
 
 ## 다음 우선 작업
 
@@ -35,7 +35,7 @@
 - [x] F-008: AnalyzerService generates a Command markdown file at .claude/commands/ (category: functional) — 5329710
 - [x] F-009: AnalyzerService generates a Skill markdown file (category: functional) — 2a313cb
 - [x] F-010: AnalyzerService generates an MCP server spec file (category: functional) — e3c3ce0
-- [ ] F-011: AnalyzerService generates a hook configuration entry (category: functional)
+- [x] F-011: AnalyzerService generates a hook configuration entry (category: functional) — 04e1db8
 - [ ] F-012: AnalyzerService generates a sub-agent markdown file at .claude/agents/ (category: functional)
 - [ ] F-013: Plan view renders the current PLAN.md content as a readable stepped list (category: functional)
 - [x] F-021: FileManager creates a new .md file at a specified path (category: functional) — fc4ad2c
@@ -74,6 +74,18 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-20 — Ralph Loop 세션 21 (Coding Agent)
+
+- F-011: AnalyzerService.generateHookEntry()로 .claude/settings.json에 훅 설정 항목 생성
+  - src/service/AnalyzerService.ts
+    - HookCommandEntry, SettingsSchema 내부 타입 추가
+    - HookEntryResult 인터페이스 추가 (settingsPath + event + command)
+    - generateHookEntry(markdownInput, settingsPath): FileManager.read()+JSON.parse+update() 패턴으로 병합
+    - _buildHookEntryPrompt(), _extractHookEvent(), _extractHookCommand() 헬퍼 추가
+    - 이스케이프 따옴표 대응: JSON.parse 우선 + 정규식 대체
+  - src/test/extension.test.ts: F-011 테스트 2건 추가 (stub runner 기반)
+  - 43 passing (기존 41 + F-011 2건)
 
 ### 2026-04-20 — Ralph Loop 세션 20 (Coding Agent)
 

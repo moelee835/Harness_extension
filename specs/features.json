@@ -147,7 +147,8 @@
       "Verify the hook configuration is written to .claude/settings.json or a dedicated file",
       "Verify the hook entry contains the correct event name and shell command"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "04e1db886433a1d7ec49edc6cce9ab077f3ae565"
   },
   {
     "id": "F-012",
