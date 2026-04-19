@@ -108,7 +108,8 @@
       "Verify a new .md file is created under .claude/commands/",
       "Verify the file contains the command name, description, and task steps"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "53297105ad542786815b165215a1769a11d0cfe4"
   },
   {
     "id": "F-009",

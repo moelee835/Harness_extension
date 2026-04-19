@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-20)
 
-- 완료된 기능: 23개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: fc4ad2c feat(F-021): FileManager.create()로 지정 경로에 .md 파일 생성
+- 완료된 기능: 24개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: 5329710 feat(F-008): AnalyzerService.generateCommand()로 .claude/commands/에 커맨드 .md 파일 생성
 
 ## 다음 우선 작업
 
@@ -32,7 +32,7 @@
 - [x] F-033: 에이전트 CLI 프로세스가 오류 코드로 종료되면 UI에 오류 메시지와 종료 코드가 표시된다 (category: functional, priority: 4) — 75c1fa6
 - [x] F-034: 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다 (category: functional, priority: 3) — 5262136
 - [x] F-007: Init Project button triggers project initialization via the configured CLI agent (category: functional) — 5e4e038
-- [ ] F-008: AnalyzerService generates a Command markdown file at .claude/commands/ (category: functional)
+- [x] F-008: AnalyzerService generates a Command markdown file at .claude/commands/ (category: functional) — 5329710
 - [ ] F-009: AnalyzerService generates a Skill markdown file (category: functional)
 - [ ] F-010: AnalyzerService generates an MCP server spec file (category: functional)
 - [ ] F-011: AnalyzerService generates a hook configuration entry (category: functional)
@@ -74,6 +74,18 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-20 — Ralph Loop 세션 18 (Coding Agent)
+
+- F-008: AnalyzerService.generateCommand()로 .claude/commands/에 커맨드 .md 파일 생성
+  - src/service/AnalyzerService.ts 신규 생성 — IAgentRunner + FileManager DI 구조
+    - generateCommand(markdownInput, commandsDir): CLI sub-agent 호출 후 stdout 파싱, FileManager로 저장
+    - _buildCommandPrompt(): YAML frontmatter 출력 요청 프롬프트 구성
+    - _extractCommandName(): YAML frontmatter name 필드 정규식 추출
+    - CommandAnalysisResult 인터페이스: filePath + content 반환
+  - src/extension.ts: AnalyzerService import 및 ExtensionApi 노출 추가
+  - src/test/extension.test.ts: IAgentRunner import 추가, F-008 테스트 2건 추가 (stub runner 기반)
+  - 37 passing (기존 35 + F-008 2건)
 
 ### 2026-04-20 — Ralph Loop 세션 17 (Coding Agent)
 
