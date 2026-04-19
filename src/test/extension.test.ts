@@ -1725,6 +1725,186 @@ suite('Extension Test Suite', () => {
 		}
 	});
 
+	// F-012: AnalyzerService.generateSubAgent()가 CLI 에이전트를 호출하고
+	// .claude/agents/ 디렉토리에 서브에이전트 .md 파일을 생성하는지 검증
+	test('F-012: AnalyzerService.generateSubAgent()가 CLI 에이전트를 호출하고 .claude/agents/에 파일을 생성해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 에이전트 디렉토리 생성
+		const tempDir = path.join(os.tmpdir(), `test-agent-f012-${Date.now()}`);
+		const agentsDir = path.join(tempDir, 'agents');
+		await fs.mkdir(agentsDir, { recursive: true });
+
+		// 스텁 IAgentRunner — invoke() 호출 시 서브에이전트 Markdown을 onStdout으로 전달
+		let invokeWasCalled = false;
+		const stubAgentContent = [
+			'---',
+			'name: test-agent',
+			'description: 테스트 에이전트입니다.',
+			'tools: Read, Edit',
+			'---',
+			'',
+			'# test-agent',
+			'',
+			'## 역할',
+			'테스트 목적으로 생성된 에이전트입니다.',
+			'',
+			'## 사용 도구',
+			'Read, Edit 도구를 사용합니다.',
+			'',
+			'## 행동 규칙',
+			'테스트 규칙을 준수합니다.',
+		].join('\n');
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				// invoke()가 호출되었음을 기록
+				invokeWasCalled = true;
+				// 스텁 출력을 onStdout 콜백으로 전달
+				if (onStdout) {
+					onStdout(stubAgentContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			// FileManager와 스텁 러너로 AnalyzerService 인스턴스 생성
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			// generateSubAgent() 호출 — agentsDir에 test-agent.md가 생성되어야 한다
+			const result = await analyzerService.generateSubAgent(
+				'# 테스트 에이전트\n\n파일 읽기와 편집 기능을 갖춘 에이전트를 만들어 주세요.',
+				agentsDir,
+			);
+
+			// CLI 에이전트(runner.invoke())가 호출되었는지 확인
+			assert.strictEqual(
+				invokeWasCalled,
+				true,
+				'AnalyzerService.generateSubAgent()이 CLI 에이전트(runner.invoke())를 호출해야 합니다.',
+			);
+
+			// 반환된 filePath가 agentsDir/<에이전트-이름>.md 형태인지 확인
+			assert.ok(
+				result.filePath.endsWith('test-agent.md'),
+				`filePath가 'test-agent.md'로 끝나야 합니다. 실제 값: ${result.filePath}`,
+			);
+
+			// 파일이 실제로 생성되었는지 확인
+			const fileExists = await fs.access(result.filePath).then(() => true).catch(() => false);
+			assert.strictEqual(
+				fileExists,
+				true,
+				`파일 '${result.filePath}'이 파일시스템에 존재해야 합니다.`,
+			);
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(tempDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
+	// F-012: 생성된 서브에이전트 파일이 에이전트 설명, 도구, 행동 규칙을 포함하는지 검증
+	test('F-012: 생성된 서브에이전트 파일이 에이전트 설명, 도구, 행동 규칙을 포함해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 에이전트 디렉토리 생성
+		const tempDir = path.join(os.tmpdir(), `test-agent-f012b-${Date.now()}`);
+		const agentsDir = path.join(tempDir, 'agents');
+		await fs.mkdir(agentsDir, { recursive: true });
+
+		// 에이전트 설명, 도구, 행동 규칙을 명확히 포함한 스텁 출력 정의
+		const stubAgentContent = [
+			'---',
+			'name: code-reviewer',
+			'description: 코드 리뷰를 전문으로 하는 에이전트입니다.',
+			'tools: Read, Grep, Glob',
+			'---',
+			'',
+			'# code-reviewer',
+			'',
+			'## 역할',
+			'코드 품질 검토 및 개선 제안을 수행합니다.',
+			'',
+			'## 사용 도구',
+			'Read, Grep, Glob 도구를 활용합니다.',
+			'',
+			'## 행동 규칙',
+			'1. 코드를 수정하지 않고 검토만 합니다.',
+			'2. 구체적인 개선 제안을 제시합니다.',
+		].join('\n');
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				if (onStdout) {
+					onStdout(stubAgentContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			const result = await analyzerService.generateSubAgent(
+				'코드 리뷰를 전문으로 하는 에이전트를 만들어 주세요.',
+				agentsDir,
+			);
+
+			// 생성된 파일의 내용을 직접 읽어 검증
+			const fileContent = await fs.readFile(result.filePath, 'utf-8');
+
+			// 에이전트 설명(description) 포함 여부 확인
+			assert.ok(
+				fileContent.includes('코드 리뷰를 전문으로 하는 에이전트입니다.'),
+				'파일에 에이전트 설명(description)이 포함되어야 합니다.',
+			);
+
+			// 사용 도구 섹션 포함 여부 확인
+			assert.ok(
+				fileContent.includes('## 사용 도구'),
+				'파일에 "## 사용 도구" 섹션이 포함되어야 합니다.',
+			);
+
+			// 행동 규칙 섹션 포함 여부 확인
+			assert.ok(
+				fileContent.includes('## 행동 규칙'),
+				'파일에 "## 행동 규칙" 섹션이 포함되어야 합니다.',
+			);
+
+			// YAML frontmatter의 tools 필드 포함 여부 확인
+			assert.ok(
+				fileContent.includes('tools:'),
+				'파일의 YAML frontmatter에 tools 필드가 포함되어야 합니다.',
+			);
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(tempDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
 	// F-021: 부모 디렉토리가 존재하지 않으면 FileManager.create()가 Error를 던지는지 검증
 	test('F-021: 부모 디렉토리가 없으면 FileManager.create()가 Error를 던져야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

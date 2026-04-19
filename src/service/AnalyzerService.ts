@@ -58,6 +58,17 @@ export interface McpServerSpecResult {
 }
 
 /**
+ * AnalyzerService.generateSubAgent() 호출 결과를 담는 객체.
+ * 생성된 서브에이전트 파일의 절대 경로와 파일 내용을 포함한다.
+ */
+export interface SubAgentAnalysisResult {
+	/** 생성된 서브에이전트 .md 파일의 절대 경로 */
+	filePath: string;
+	/** 파일에 기록된 Markdown 내용 */
+	content: string;
+}
+
+/**
  * AnalyzerService.generateHookEntry() 호출 결과를 담는 객체.
  * 훅이 등록된 settings.json 경로, 이벤트 이름, 셸 명령을 포함한다.
  */
@@ -77,7 +88,7 @@ export interface HookEntryResult {
  * F-009: 스킬 .md 파일 생성 (.claude/skills/)
  * F-010: MCP 서버 스펙 .json 파일 생성 (지정 디렉토리)
  * F-011: 훅 설정 항목 생성 (.claude/settings.json의 hooks 섹션)
- * F-012: 서브에이전트 .md 파일 생성 (.claude/agents/)
+ * F-012: 서브에이전트 .md 파일 생성 (.claude/agents/<에이전트-이름>.md)
  *
  * 에이전트에게 구조화된 프롬프트를 전달하고,
  * 에이전트가 stdout으로 출력한 Markdown 내용을 파싱하여 FileManager로 저장한다.
@@ -285,6 +296,75 @@ export class AnalyzerService {
 
 	/**
 	 * Markdown 형식의 요구사항 입력을 받아 CLI 에이전트(sub-agent)를 통해
+	 * 서브에이전트 .md 파일을 지정된 디렉토리에 생성한다.
+	 *
+	 * F-012: CLI 에이전트가 stdout으로 출력한 Markdown(YAML frontmatter 포함)을
+	 * 파싱하여 name 필드를 서브에이전트 이름으로 사용하고,
+	 * agentsDir/<에이전트-이름>.md 경로에 파일을 생성한다.
+	 *
+	 * 에이전트 출력 형식 예시:
+	 * ```
+	 * ---
+	 * name: my-agent
+	 * description: 에이전트 역할 설명 (언제 호출해야 하는지 기술)
+	 * tools: Read, Edit, Bash
+	 * ---
+	 *
+	 * # my-agent
+	 *
+	 * ## 역할
+	 * <에이전트의 역할과 목적>
+	 *
+	 * ## 사용 도구
+	 * <에이전트가 사용할 수 있는 도구 목록>
+	 *
+	 * ## 행동 규칙
+	 * <에이전트가 준수해야 할 행동 규칙>
+	 * ```
+	 *
+	 * @param markdownInput - 서브에이전트를 설명하는 Markdown 형식의 요구사항 문자열
+	 * @param agentsDir - 생성될 파일을 저장할 디렉토리 절대 경로 (통상 .claude/agents/)
+	 * @returns 생성된 파일 경로와 내용을 담은 결과 객체
+	 * @throws CLI 에이전트 출력에서 에이전트 이름을 추출할 수 없으면 Error를 던진다
+	 */
+	public async generateSubAgent(
+		markdownInput: string,
+		agentsDir: string,
+	): Promise<SubAgentAnalysisResult> {
+		// CLI 에이전트에게 전달할 프롬프트 구성
+		const prompt = this._buildSubAgentPrompt(markdownInput);
+
+		// CLI 에이전트(sub-agent) 호출 — stdout 청크를 배열로 수집
+		const stdoutChunks: string[] = [];
+		await this._runner.invoke(
+			prompt,
+			(chunk) => stdoutChunks.push(chunk),
+			undefined,
+		);
+
+		// 수집된 stdout 전체를 파일 내용으로 사용
+		const content = stdoutChunks.join('');
+
+		// YAML frontmatter에서 에이전트 이름 추출
+		const agentName = this._extractName(content);
+		if (agentName === null) {
+			throw new Error(
+				'CLI 에이전트 출력에서 에이전트 이름(name 필드)을 추출할 수 없습니다. ' +
+				'에이전트 출력이 YAML frontmatter(name: <이름>)를 포함해야 합니다.',
+			);
+		}
+
+		// 파일 저장 경로: agentsDir/<에이전트-이름>.md
+		const filePath = path.join(agentsDir, `${agentName}.md`);
+
+		// FileManager를 통해 파일 생성
+		await this._fileManager.create(filePath, content);
+
+		return { filePath, content };
+	}
+
+	/**
+	 * Markdown 형식의 요구사항 입력을 받아 CLI 에이전트(sub-agent)를 통해
 	 * 훅 설정 항목을 .claude/settings.json의 hooks 섹션에 추가한다.
 	 *
 	 * F-011: CLI 에이전트가 stdout으로 출력한 JSON을 파싱하여
@@ -463,6 +543,44 @@ export class AnalyzerService {
 			'}',
 			'',
 			'JSON 이외의 텍스트는 출력하지 마십시오.',
+			'',
+			'요구사항:',
+			markdownInput,
+		].join('\n');
+	}
+
+	/**
+	 * CLI 에이전트에게 전달할 서브에이전트 파일 생성 프롬프트를 구성한다.
+	 * 에이전트는 YAML frontmatter(name, description, tools 필드 포함),
+	 * 역할 설명, 사용 도구, 행동 규칙 섹션을 포함한 Markdown을 stdout으로 출력해야 한다.
+	 *
+	 * @param markdownInput - 사용자가 입력한 요구사항 Markdown 문자열
+	 * @returns CLI 에이전트에게 전달할 프롬프트 문자열
+	 */
+	private _buildSubAgentPrompt(markdownInput: string): string {
+		return [
+			'다음 요구사항을 분석하여 Claude Code 서브에이전트(specialist agent) 파일을 생성하세요.',
+			'',
+			'출력 형식은 반드시 YAML frontmatter를 포함한 Markdown이어야 합니다:',
+			'',
+			'---',
+			'name: <에이전트-이름> (영문 소문자와 하이픈만 허용)',
+			'description: <이 에이전트를 언제 호출해야 하는지 설명하는 한 줄 문자열>',
+			'tools: <에이전트가 사용할 수 있는 도구 목록 (쉼표 구분, 예: Read, Edit, Bash)>',
+			'---',
+			'',
+			'# <에이전트 이름>',
+			'',
+			'## 역할',
+			'<에이전트의 역할과 목적>',
+			'',
+			'## 사용 도구',
+			'<에이전트가 사용할 수 있는 도구와 그 용도>',
+			'',
+			'## 행동 규칙',
+			'<에이전트가 반드시 준수해야 할 행동 규칙>',
+			'',
+			'---',
 			'',
 			'요구사항:',
 			markdownInput,
