@@ -2153,4 +2153,63 @@ suite('Extension Test Suite', () => {
 		);
 	});
 
+	// F-023: FileManager.update()가 기존 파일 내용을 새 내용으로 덮어쓰는지 검증
+	test('F-023: FileManager.update()가 파일 내용을 새 내용으로 덮어써야 한다', async () => {
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		// 초기 내용을 가진 임시 파일 생성
+		const tmpDir = os.tmpdir();
+		const testFilePath = path.join(tmpDir, `test-file-manager-f023-${Date.now()}.md`);
+		const initialContent = '# 초기 내용\n\n원래 텍스트입니다.';
+		const updatedContent = '# 갱신된 내용\n\n덮어쓰기가 성공했습니다.';
+		await fs.writeFile(testFilePath, initialContent, 'utf-8');
+
+		try {
+			const fileManager = new FileManager();
+			await fileManager.update(testFilePath, updatedContent);
+
+			// 파일 내용이 새 내용으로 교체되었는지 확인
+			const readBack = await fs.readFile(testFilePath, 'utf-8');
+			assert.strictEqual(
+				readBack,
+				updatedContent,
+				'FileManager.update() 후 파일 내용이 새 내용과 일치해야 합니다.'
+			);
+			assert.notStrictEqual(
+				readBack,
+				initialContent,
+				'FileManager.update() 후 원래 내용이 남아 있으면 안 됩니다.'
+			);
+		} finally {
+			await fs.unlink(testFilePath).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
+	// F-023: 존재하지 않는 파일 경로로 update() 호출 시 에러가 발생해야 한다
+	test('F-023: 파일이 존재하지 않으면 FileManager.update()가 에러를 던져야 한다', async () => {
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		const nonExistentPath = path.join(os.tmpdir(), `non-existent-f023-${Date.now()}.md`);
+		const fileManager = new FileManager();
+
+		await assert.rejects(
+			async () => fileManager.update(nonExistentPath, '# 새 내용'),
+			'존재하지 않는 파일에 update()를 호출하면 에러가 발생해야 합니다.'
+		);
+	});
+
 });
