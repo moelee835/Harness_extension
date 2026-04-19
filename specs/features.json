@@ -329,7 +329,8 @@
       "Verify the file no longer exists on the filesystem",
       "Verify an error is thrown if the file does not exist"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "6129eb1897026b295e5bb7d40bd0ef75e575e4a3"
   },
   {
     "id": "F-025",
