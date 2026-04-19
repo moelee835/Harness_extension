@@ -134,7 +134,8 @@
       "Verify a MCP spec file (.json or .md) is created",
       "Verify the spec file contains the server name and configuration fields"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "e3c3ce0fc8bcbfb7a11c165a84a0bbc6a3396639"
   },
   {
     "id": "F-011",
