@@ -357,7 +357,8 @@
       "Verify the result file list is rendered in the WebviewPanel",
       "Verify each file entry is clickable and opens the file in the VSCode editor"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "7927b0a1729ed94a204b03a376f413a5f76bb0a6"
   },
   {
     "id": "F-027",

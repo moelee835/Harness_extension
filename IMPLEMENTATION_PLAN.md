@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-20)
 
-- 완료된 기능: 33개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-013, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-022, F-023, F-024, F-025, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: 1203354 feat(F-025): FileManager.list()가 디렉토리의 .md 파일 경로 목록을 반환한다
+- 완료된 기능: 34개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-013, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-022, F-023, F-024, F-025, F-026, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: 7927b0a feat(F-026): UI가 에이전트 액션 완료 후 생성/수정된 파일 목록을 표시한다
 
 ## 다음 우선 작업
 
@@ -43,7 +43,7 @@
 - [x] F-023: FileManager updates (overwrites) a .md file at a specified path (category: functional) — ec39718
 - [x] F-024: FileManager deletes a .md file at a specified path (category: functional) — 6129eb1
 - [x] F-025: FileManager lists all .md files in a specified directory (category: functional) — 1203354
-- [ ] F-026: UI displays the list of files created or modified after an agent action completes (category: functional)
+- [x] F-026: UI displays the list of files created or modified after an agent action completes (category: functional) — 7927b0a
 
 ## 구현 순서 가이드
 
@@ -74,6 +74,17 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-20 — Ralph Loop 세션 28 (Coding Agent)
+
+- F-026: UI가 에이전트 액션 완료 후 생성/수정된 파일 목록을 표시한다
+  - src/ui/MainPanel.ts: OpenFileMessage 타입, _fileList 필드, showFileList()/getFileListForTest() 추가
+  - src/ui/MainPanel.ts: HTML에 #file-list-container 섹션 — .file-item-btn 버튼 목록 렌더링
+  - src/ui/MainPanel.ts: openFile 메시지 처리 — vscode.open 명령으로 파일 열기
+  - src/extension.ts: InitService.run() 완료 후 FileManager.list(.claude/)로 파일 목록 조회 후 표시
+  - src/test/extension.test.ts: F-026 테스트 2건 추가
+  - 57 passing (기존 55 + F-026 2건)
+- **모든 34개 기능 완료**
 
 ### 2026-04-20 — Ralph Loop 세션 27 (Coding Agent)
 
