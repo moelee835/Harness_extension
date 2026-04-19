@@ -316,7 +316,8 @@
       "Verify the file now contains newContent",
       "Verify the original content is fully replaced"
     ],
-    "passes": false
+    "passes": true,
+    "implemented_in_commit": "ec39718088e1ec90a804782708735071f6219122"
   },
   {
     "id": "F-024",

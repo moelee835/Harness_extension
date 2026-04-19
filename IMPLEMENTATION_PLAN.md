@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-20)
 
-- 완료된 기능: 30개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-013, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-022, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: f51135b feat(F-022): FileManager.read()가 지정된 경로의 .md 파일을 읽어 반환한다
+- 완료된 기능: 31개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-010, F-011, F-012, F-013, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-022, F-023, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: ec39718 feat(F-023): FileManager.update()가 지정된 경로의 .md 파일을 덮어쓴다
 
 ## 다음 우선 작업
 
@@ -40,7 +40,7 @@
 - [x] F-013: Plan view renders the current PLAN.md content as a readable stepped list (category: functional) — 4983148
 - [x] F-021: FileManager creates a new .md file at a specified path (category: functional) — fc4ad2c
 - [x] F-022: FileManager reads a .md file from a specified path (category: functional) — f51135b
-- [ ] F-023: FileManager updates (overwrites) a .md file at a specified path (category: functional)
+- [x] F-023: FileManager updates (overwrites) a .md file at a specified path (category: functional) — ec39718
 - [ ] F-024: FileManager deletes a .md file at a specified path (category: functional)
 - [ ] F-025: FileManager lists all .md files in a specified directory (category: functional)
 - [ ] F-026: UI displays the list of files created or modified after an agent action completes (category: functional)
@@ -74,6 +74,14 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-20 — Ralph Loop 세션 25 (Coding Agent)
+
+- F-023: FileManager.update()가 지정된 경로의 .md 파일을 덮어쓴다
+  - src/test/extension.test.ts: F-023 테스트 2건 추가
+    - update()가 파일 내용을 새 내용으로 완전히 교체하는지 검증
+    - 존재하지 않는 파일 경로로 호출 시 에러 발생 검증
+  - 51 passing (기존 49 + F-023 2건)
 
 ### 2026-04-20 — Ralph Loop 세션 24 (Coding Agent)
 
