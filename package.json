@@ -31,6 +31,10 @@
       {
         "command": "agent-harness-framework.openAgentSettings",
         "title": "Agent Harness: 에이전트 설정 열기"
+      },
+      {
+        "command": "agent-harness-framework.openPlanView",
+        "title": "Agent Harness: 플랜 뷰 열기"
       }
     ],
     "configuration": {

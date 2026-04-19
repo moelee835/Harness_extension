@@ -1905,6 +1905,167 @@ suite('Extension Test Suite', () => {
 		}
 	});
 
+	// F-013: PlanService.loadPlan()이 PLAN.md를 읽어 완료/미완료 단계를 올바르게 파싱하는지 검증
+	test('F-013: PlanService.loadPlan()이 [x] 완료 단계와 [ ] 미완료 단계를 올바르게 파싱해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { PlanService, FileManager } = ext.exports;
+
+		// 테스트용 임시 PLAN.md 파일 생성
+		const tmpDir = os.tmpdir();
+		const planFilePath = path.join(tmpDir, `test-plan-f013-${Date.now()}.md`);
+		const planContent = [
+			'# PLAN.md',
+			'',
+			'## 1단계: 인프라 구성',
+			'- [x] Extension 활성화 구현',
+			'- [x] esbuild 번들링 설정',
+			'- [ ] .vsix 패키징 검증',
+			'',
+			'## 2단계: UI 구현',
+			'- [ ] WebviewPanel 생성',
+			'- 설정 UI 추가',
+		].join('\n');
+		await fs.writeFile(planFilePath, planContent, 'utf-8');
+
+		try {
+			// FileManager와 PlanService 인스턴스 생성
+			const fileManager = new FileManager();
+			const planService = new PlanService(fileManager);
+
+			// loadPlan() 호출 — PLAN.md를 읽어 PlanData를 반환해야 한다
+			const planData = await planService.loadPlan(planFilePath);
+
+			// rawContent가 파일 내용과 일치하는지 확인
+			assert.strictEqual(
+				planData.rawContent,
+				planContent,
+				'rawContent가 PLAN.md 파일 내용과 일치해야 합니다.'
+			);
+
+			// 섹션이 2개인지 확인
+			assert.strictEqual(
+				planData.sections.length,
+				2,
+				'섹션이 2개여야 합니다 (## 제목 2개 기준).'
+			);
+
+			// 1단계 섹션 검증
+			const section1 = planData.sections[0];
+			assert.strictEqual(section1.title, '1단계: 인프라 구성', '첫 번째 섹션 제목이 일치해야 합니다.');
+			assert.strictEqual(section1.steps.length, 3, '첫 번째 섹션에 단계가 3개여야 합니다.');
+
+			// [x] 완료 단계 검증
+			assert.strictEqual(section1.steps[0].completed, true, '첫 번째 단계([x])가 completed=true여야 합니다.');
+			assert.strictEqual(section1.steps[0].text, 'Extension 활성화 구현', '첫 번째 단계 텍스트가 일치해야 합니다.');
+			assert.strictEqual(section1.steps[1].completed, true, '두 번째 단계([x])가 completed=true여야 합니다.');
+
+			// [ ] 미완료 단계 검증
+			assert.strictEqual(section1.steps[2].completed, false, '세 번째 단계([ ])가 completed=false여야 합니다.');
+			assert.strictEqual(section1.steps[2].text, '.vsix 패키징 검증', '세 번째 단계 텍스트가 일치해야 합니다.');
+
+			// 2단계 섹션 검증
+			const section2 = planData.sections[1];
+			assert.strictEqual(section2.title, '2단계: UI 구현', '두 번째 섹션 제목이 일치해야 합니다.');
+			assert.strictEqual(section2.steps.length, 2, '두 번째 섹션에 단계가 2개여야 합니다.');
+			assert.strictEqual(section2.steps[0].completed, false, '체크박스 없는 - 항목도 completed=false여야 합니다.');
+		} finally {
+			// 테스트 후 임시 파일 정리
+			await fs.unlink(planFilePath).catch(() => { /* 이미 삭제된 경우 무시 */ });
+		}
+	});
+
+	// F-013: PlanView HTML에 완료 단계(step-completed)와 미완료 단계(step-pending)가
+	// 시각적으로 구분되어 렌더링되는지 검증
+	test('F-013: PlanView HTML에 완료 단계와 미완료 단계가 다른 CSS 클래스로 렌더링되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { PlanView, FileManager, PlanService } = ext.exports;
+
+		// 테스트 전 기존 PlanView 패널 닫기 (상태 격리)
+		PlanView.disposeForTest();
+
+		// 테스트용 임시 PLAN.md 파일 생성
+		const tmpDir = os.tmpdir();
+		const planFilePath = path.join(tmpDir, `test-planview-f013-${Date.now()}.md`);
+		const planContent = [
+			'## 테스트 섹션',
+			'- [x] 완료된 작업',
+			'- [ ] 미완료 작업',
+		].join('\n');
+		await fs.writeFile(planFilePath, planContent, 'utf-8');
+
+		try {
+			// PlanService로 PLAN.md 파싱
+			const fileManager = new FileManager();
+			const planService = new PlanService(fileManager);
+			const planData = await planService.loadPlan(planFilePath);
+
+			// Extension URI 획득 (실제 extensionUri 필요 — Extension에서 가져옴)
+			const extObj = vscode.extensions.getExtension(EXTENSION_ID);
+			assert.ok(extObj, 'Extension을 찾을 수 없습니다.');
+			const extensionUri = extObj.extensionUri;
+
+			// PlanView 패널 표시
+			PlanView.show(extensionUri, planData);
+			assert.strictEqual(PlanView.isOpen(), true, 'PlanView 패널이 열려 있어야 합니다.');
+
+			// HTML 콘텐츠 획득
+			const html = PlanView.getHtmlForTest();
+			assert.ok(html.length > 0, 'PlanView HTML이 비어 있지 않아야 합니다.');
+
+			// plan-steps 목록이 HTML에 포함되어 있는지 확인
+			assert.ok(
+				html.includes('class="plan-steps"'),
+				'HTML에 plan-steps 클래스 목록이 포함되어야 합니다.'
+			);
+
+			// 완료 단계가 step-completed 클래스로 렌더링되는지 확인
+			assert.ok(
+				html.includes('step-completed'),
+				'HTML에 step-completed 클래스가 포함되어야 합니다 (완료 단계 시각적 구분).'
+			);
+
+			// 미완료 단계가 step-pending 클래스로 렌더링되는지 확인
+			assert.ok(
+				html.includes('step-pending'),
+				'HTML에 step-pending 클래스가 포함되어야 합니다 (미완료 단계 시각적 구분).'
+			);
+
+			// 완료 인디케이터(✓)가 포함되어 있는지 확인
+			assert.ok(
+				html.includes('step-indicator-completed'),
+				'HTML에 step-indicator-completed 클래스가 포함되어야 합니다.'
+			);
+
+			// 단계 텍스트가 HTML에 포함되어 있는지 확인 (XSS 이스케이프 후)
+			assert.ok(
+				html.includes('완료된 작업'),
+				'완료된 단계 텍스트가 HTML에 포함되어야 합니다.'
+			);
+			assert.ok(
+				html.includes('미완료 작업'),
+				'미완료 단계 텍스트가 HTML에 포함되어야 합니다.'
+			);
+		} finally {
+			// 테스트 후 패널과 임시 파일 정리
+			PlanView.disposeForTest();
+			await fs.unlink(planFilePath).catch(() => { /* 이미 삭제된 경우 무시 */ });
+		}
+	});
+
 	// F-021: 부모 디렉토리가 존재하지 않으면 FileManager.create()가 Error를 던지는지 검증
 	test('F-021: 부모 디렉토리가 없으면 FileManager.create()가 Error를 던져야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

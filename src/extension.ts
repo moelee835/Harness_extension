@@ -18,6 +18,10 @@ import { InitService } from './service/InitService.js';
 import { FileManager } from './persistence/FileManager.js';
 // 요구사항 분석 서비스 가져오기 — F-008~F-012: CLI sub-agent를 통해 .md 파일 생성
 import { AnalyzerService } from './service/AnalyzerService.js';
+// 플랜 서비스 가져오기 — F-013: PLAN.md를 읽어 단계별 플랜 데이터를 파싱
+import { PlanService } from './service/PlanService.js';
+// 플랜 뷰 UI 클래스 가져오기 — F-013: PLAN.md 내용을 단계별 목록으로 렌더링하는 WebviewPanel
+import { PlanView } from './ui/PlanView.js';
 
 /** Extension activate() 반환 타입 — 테스트에서 내부 상태 접근 시 사용 */
 export interface ExtensionApi {
@@ -39,6 +43,10 @@ export interface ExtensionApi {
 	FileManager: typeof FileManager;
 	/** 테스트에서 AnalyzerService 인스턴스 생성 및 generateCommand() 동작을 검증하기 위해 노출 */
 	AnalyzerService: typeof AnalyzerService;
+	/** 테스트에서 PlanService 인스턴스 생성 및 loadPlan() 동작을 검증하기 위해 노출 */
+	PlanService: typeof PlanService;
+	/** 테스트에서 PlanView 싱글톤 상태 및 HTML 렌더링을 검증하기 위해 노출 */
+	PlanView: typeof PlanView;
 }
 
 /**
@@ -107,11 +115,46 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 		}
 	);
 
+	// openPlanView 명령 등록 — F-013: PLAN.md 내용을 단계별 목록으로 표시하는 뷰 열기
+	// package.json의 contributes.commands에 선언된 ID와 반드시 일치해야 함
+	const openPlanViewDisposable = vscode.commands.registerCommand(
+		'agent-harness-framework.openPlanView',
+		async () => {
+			// 워크스페이스 루트 폴더를 기반으로 PLAN.md 경로 구성
+			const workspaceFolders = vscode.workspace.workspaceFolders;
+			if (!workspaceFolders || workspaceFolders.length === 0) {
+				vscode.window.showErrorMessage('플랜 뷰를 열려면 워크스페이스 폴더가 필요합니다.');
+				return;
+			}
+
+			// 기본 플랜 경로: <워크스페이스 루트>/.claude/plans/PLAN.md
+			const planFilePath = vscode.Uri.joinPath(
+				workspaceFolders[0].uri,
+				'.claude', 'plans', 'PLAN.md'
+			).fsPath;
+
+			try {
+				// PlanService로 PLAN.md를 읽어 파싱
+				const fileManager = new FileManager();
+				const planService = new PlanService(fileManager);
+				const planData = await planService.loadPlan(planFilePath);
+				// PlanView에 파싱된 플랜 데이터를 전달하여 렌더링
+				PlanView.show(context.extensionUri, planData);
+			} catch (err: unknown) {
+				// PLAN.md 읽기 실패 시 오류 메시지 표시
+				const errorMessage = err instanceof Error
+					? err.message
+					: '알 수 없는 오류가 발생했습니다.';
+				vscode.window.showErrorMessage(`PLAN.md를 읽을 수 없습니다: ${errorMessage}`);
+			}
+		}
+	);
+
 	// 등록한 모든 disposable을 subscriptions에 추가하여 Extension 비활성화 시 자동 해제
-	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable, openAgentSettingsDisposable);
+	context.subscriptions.push(helloWorldDisposable, openMainPanelDisposable, openAgentSettingsDisposable, openPlanViewDisposable);
 
 	// ExtensionApi 반환 — 테스트 환경에서 ext.exports.XXX 형태로 접근 가능
-	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner, GeminiCliRunner, CustomCliRunner, InitService, FileManager, AnalyzerService };
+	return { MainPanel, AgentSettingsView, AgentRunnerFactory, ClaudeCodeRunner, GeminiCliRunner, CustomCliRunner, InitService, FileManager, AnalyzerService, PlanService, PlanView };
 }
 
 /**
