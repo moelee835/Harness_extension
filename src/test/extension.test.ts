@@ -2212,4 +2212,50 @@ suite('Extension Test Suite', () => {
 		);
 	});
 
+	// F-024: FileManager.delete()가 지정된 경로의 파일을 삭제하는지 검증
+	test('F-024: FileManager.delete()가 파일을 삭제해야 한다', async () => {
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		// 삭제 대상 임시 파일 생성
+		const tmpDir = os.tmpdir();
+		const testFilePath = path.join(tmpDir, `test-file-manager-f024-${Date.now()}.md`);
+		await fs.writeFile(testFilePath, '# 삭제 테스트', 'utf-8');
+
+		const fileManager = new FileManager();
+		await fileManager.delete(testFilePath);
+
+		// 파일이 실제로 삭제되었는지 확인 — 접근 시 에러 발생해야 함
+		await assert.rejects(
+			async () => fs.access(testFilePath),
+			'FileManager.delete() 후 파일이 존재하면 안 됩니다.'
+		);
+	});
+
+	// F-024: 존재하지 않는 파일 경로로 delete() 호출 시 에러가 발생해야 한다
+	test('F-024: 파일이 존재하지 않으면 FileManager.delete()가 에러를 던져야 한다', async () => {
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		const nonExistentPath = path.join(os.tmpdir(), `non-existent-f024-${Date.now()}.md`);
+		const fileManager = new FileManager();
+
+		await assert.rejects(
+			async () => fileManager.delete(nonExistentPath),
+			'존재하지 않는 파일에 delete()를 호출하면 에러가 발생해야 합니다.'
+		);
+	});
+
 });
