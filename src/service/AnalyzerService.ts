@@ -28,11 +28,22 @@ export interface SkillAnalysisResult {
 }
 
 /**
+ * AnalyzerService.generateMcpServerSpec() 호출 결과를 담는 객체.
+ * 생성된 MCP 서버 스펙 파일의 절대 경로와 파일 내용을 포함한다.
+ */
+export interface McpServerSpecResult {
+	/** 생성된 MCP 서버 스펙 .json 파일의 절대 경로 */
+	filePath: string;
+	/** 파일에 기록된 JSON 내용 */
+	content: string;
+}
+
+/**
  * CLI 에이전트(sub-agent)를 통해 요구사항을 분석하고 결과물(.md 파일)을 생성하는 서비스.
  *
  * F-008: 커맨드 .md 파일 생성 (.claude/commands/)
- * F-009: 스킬 .md 파일 생성
- * F-010: MCP 서버 스펙 파일 생성
+ * F-009: 스킬 .md 파일 생성 (.claude/skills/)
+ * F-010: MCP 서버 스펙 .json 파일 생성 (지정 디렉토리)
  * F-011: 훅 설정 항목 생성
  * F-012: 서브에이전트 .md 파일 생성 (.claude/agents/)
  *
@@ -182,6 +193,65 @@ export class AnalyzerService {
 	}
 
 	/**
+	 * Markdown 형식의 요구사항 입력을 받아 CLI 에이전트(sub-agent)를 통해
+	 * MCP 서버 스펙 .json 파일을 지정된 디렉토리에 생성한다.
+	 *
+	 * F-010: CLI 에이전트가 stdout으로 출력한 JSON을 파싱하여
+	 * serverName 필드를 파일 이름으로 사용하고,
+	 * outputDir/<서버-이름>.json 경로에 파일을 생성한다.
+	 *
+	 * 에이전트 출력 형식 예시:
+	 * ```json
+	 * {
+	 *   "serverName": "my-mcp-server",
+	 *   "command": "node",
+	 *   "args": ["server.js"],
+	 *   "description": "서버 설명"
+	 * }
+	 * ```
+	 *
+	 * @param markdownInput - MCP 서버를 설명하는 Markdown 형식의 요구사항 문자열
+	 * @param outputDir - 생성될 파일을 저장할 디렉토리 절대 경로
+	 * @returns 생성된 파일 경로와 내용을 담은 결과 객체
+	 * @throws CLI 에이전트 출력에서 serverName 필드를 추출할 수 없으면 Error를 던진다
+	 */
+	public async generateMcpServerSpec(
+		markdownInput: string,
+		outputDir: string,
+	): Promise<McpServerSpecResult> {
+		// CLI 에이전트에게 전달할 프롬프트 구성
+		const prompt = this._buildMcpServerSpecPrompt(markdownInput);
+
+		// CLI 에이전트(sub-agent) 호출 — stdout 청크를 배열로 수집
+		const stdoutChunks: string[] = [];
+		await this._runner.invoke(
+			prompt,
+			(chunk) => stdoutChunks.push(chunk),
+			undefined,
+		);
+
+		// 수집된 stdout 전체를 파일 내용으로 사용
+		const content = stdoutChunks.join('');
+
+		// JSON에서 serverName 필드 추출
+		const serverName = this._extractServerName(content);
+		if (serverName === null) {
+			throw new Error(
+				'CLI 에이전트 출력에서 serverName 필드를 추출할 수 없습니다. ' +
+				'에이전트 출력이 JSON 형식이며 "serverName" 필드를 포함해야 합니다.',
+			);
+		}
+
+		// 파일 저장 경로: outputDir/<서버-이름>.json
+		const filePath = path.join(outputDir, `${serverName}.json`);
+
+		// FileManager를 통해 파일 생성
+		await this._fileManager.create(filePath, content);
+
+		return { filePath, content };
+	}
+
+	/**
 	 * CLI 에이전트에게 전달할 커맨드 생성 프롬프트를 구성한다.
 	 * 에이전트는 YAML frontmatter(name 필드 포함)와 커맨드 설명 Markdown을
 	 * stdout으로 출력해야 한다.
@@ -245,6 +315,51 @@ export class AnalyzerService {
 			'요구사항:',
 			markdownInput,
 		].join('\n');
+	}
+
+	/**
+	 * CLI 에이전트에게 전달할 MCP 서버 스펙 생성 프롬프트를 구성한다.
+	 * 에이전트는 serverName, command, args, description 등의 필드를 포함한
+	 * JSON 형식으로 stdout에 출력해야 한다.
+	 *
+	 * @param markdownInput - 사용자가 입력한 요구사항 Markdown 문자열
+	 * @returns CLI 에이전트에게 전달할 프롬프트 문자열
+	 */
+	private _buildMcpServerSpecPrompt(markdownInput: string): string {
+		return [
+			'다음 요구사항을 분석하여 MCP(Model Context Protocol) 서버 스펙 파일을 생성하세요.',
+			'',
+			'출력 형식은 반드시 아래 필드를 포함하는 JSON이어야 합니다:',
+			'',
+			'{',
+			'  "serverName": "<서버-이름> (영문 소문자, 숫자, 하이픈만 허용)",',
+			'  "command": "<서버 실행 명령 (예: node, python, npx)>",',
+			'  "args": ["<실행 인자 배열>"],',
+			'  "description": "<서버 한 줄 설명>"',
+			'}',
+			'',
+			'JSON 이외의 텍스트는 출력하지 마십시오.',
+			'',
+			'요구사항:',
+			markdownInput,
+		].join('\n');
+	}
+
+	/**
+	 * CLI 에이전트가 출력한 JSON 문자열에서 serverName 필드 값을 추출한다.
+	 * generateMcpServerSpec()에서 파일 이름 결정에 사용한다.
+	 *
+	 * @param content - CLI 에이전트가 stdout으로 출력한 전체 JSON 문자열
+	 * @returns 추출된 serverName 값. 없으면 null 반환.
+	 */
+	private _extractServerName(content: string): string | null {
+		// JSON에서 "serverName" 키 값을 정규식으로 추출 (파싱 실패 대비 정규식 우선 사용)
+		const nameMatch = /"serverName"\s*:\s*"([^"]+)"/.exec(content);
+		if (!nameMatch || !nameMatch[1]) {
+			return null;
+		}
+		// 앞뒤 공백 제거 후 반환
+		return nameMatch[1].trim();
 	}
 
 	/**

@@ -1427,6 +1427,151 @@ suite('Extension Test Suite', () => {
 		}
 	});
 
+	// F-010: AnalyzerService.generateMcpServerSpec()가 CLI 에이전트를 호출하고
+	// 지정 디렉토리에 MCP 서버 스펙 .json 파일을 생성하는지 검증
+	test('F-010: AnalyzerService.generateMcpServerSpec()가 CLI 에이전트를 호출하고 MCP 스펙 .json 파일을 생성해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 outputDir 생성
+		const outputDir = path.join(os.tmpdir(), `test-mcp-f010-${Date.now()}`);
+		await fs.mkdir(outputDir, { recursive: true });
+
+		// 스텁 IAgentRunner — invoke() 호출 시 MCP 서버 스펙 JSON을 onStdout으로 전달
+		let invokeWasCalled = false;
+		const stubMcpContent = JSON.stringify({
+			serverName: 'test-mcp-server',
+			command: 'node',
+			args: ['server.js'],
+			description: '테스트용 MCP 서버입니다.',
+		}, null, 2);
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				// invoke()가 호출되었음을 기록
+				invokeWasCalled = true;
+				// 스텁 출력을 onStdout 콜백으로 전달 (실제 CLI 출력 시뮬레이션)
+				if (onStdout) {
+					onStdout(stubMcpContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			// FileManager와 스텁 러너로 AnalyzerService 인스턴스 생성
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			// generateMcpServerSpec() 호출 — outputDir에 test-mcp-server.json이 생성되어야 한다
+			const result = await analyzerService.generateMcpServerSpec(
+				'# 테스트 MCP 서버\n\n파일 시스템 접근을 위한 MCP 서버를 만들어 주세요.',
+				outputDir,
+			);
+
+			// CLI 에이전트(runner.invoke())가 호출되었는지 확인
+			assert.strictEqual(
+				invokeWasCalled,
+				true,
+				'AnalyzerService.generateMcpServerSpec()이 CLI 에이전트(runner.invoke())를 호출해야 합니다.',
+			);
+
+			// 생성된 파일 경로가 outputDir/test-mcp-server.json인지 확인
+			const expectedFilePath = path.join(outputDir, 'test-mcp-server.json');
+			assert.strictEqual(
+				result.filePath,
+				expectedFilePath,
+				'생성된 파일 경로가 outputDir/test-mcp-server.json여야 합니다.',
+			);
+
+			// 파일이 실제로 존재하고 비어 있지 않은지 확인
+			const fileContent = await fs.readFile(expectedFilePath, 'utf-8');
+			assert.ok(fileContent.length > 0, '생성된 파일이 비어있지 않아야 합니다.');
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(outputDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
+	// F-010: 생성된 MCP 서버 스펙 파일이 서버 이름과 구성 필드를 포함하는지 검증
+	test('F-010: 생성된 MCP 서버 스펙 파일이 서버 이름과 구성 필드를 포함해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 outputDir 생성
+		const outputDir = path.join(os.tmpdir(), `test-mcp-f010b-${Date.now()}`);
+		await fs.mkdir(outputDir, { recursive: true });
+
+		// 서버 이름과 구성 필드를 포함하는 스텁 출력 정의
+		const stubMcpContent = JSON.stringify({
+			serverName: 'filesystem-server',
+			command: 'npx',
+			args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+			description: '파일 시스템 접근 MCP 서버',
+		}, null, 2);
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				if (onStdout) {
+					onStdout(stubMcpContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			const result = await analyzerService.generateMcpServerSpec(
+				'파일 시스템 접근 MCP 서버를 만들어 주세요.',
+				outputDir,
+			);
+
+			// 생성된 파일 내용 직접 읽어 검증
+			const fileContent = await fs.readFile(result.filePath, 'utf-8');
+
+			// 파일에 서버 이름이 포함되어 있는지 확인
+			assert.ok(
+				fileContent.includes('filesystem-server'),
+				'생성된 MCP 스펙 파일에 서버 이름(filesystem-server)이 포함되어야 합니다.',
+			);
+
+			// 파일에 command 필드가 포함되어 있는지 확인
+			assert.ok(
+				fileContent.includes('command'),
+				'생성된 MCP 스펙 파일에 command 필드가 포함되어야 합니다.',
+			);
+
+			// 파일에 args 필드가 포함되어 있는지 확인
+			assert.ok(
+				fileContent.includes('args'),
+				'생성된 MCP 스펙 파일에 args 필드가 포함되어야 합니다.',
+			);
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(outputDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
 	// F-021: 부모 디렉토리가 존재하지 않으면 FileManager.create()가 Error를 던지는지 검증
 	test('F-021: 부모 디렉토리가 없으면 FileManager.create()가 Error를 던져야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득
