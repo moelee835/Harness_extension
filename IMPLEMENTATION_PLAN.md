@@ -2,8 +2,8 @@
 
 ## 현재 상태 (마지막 업데이트: 2026-04-20)
 
-- 완료된 기능: 24개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
-- 마지막 커밋: 5329710 feat(F-008): AnalyzerService.generateCommand()로 .claude/commands/에 커맨드 .md 파일 생성
+- 완료된 기능: 25개 / 전체 34개 (F-001, F-002, F-003, F-004, F-005, F-006, F-007, F-008, F-009, F-014, F-015, F-016, F-017, F-018, F-019, F-020, F-021, F-027, F-028, F-029, F-030, F-031, F-032, F-033, F-034)
+- 마지막 커밋: 2a313cb feat(F-009): AnalyzerService.generateSkill()로 .claude/skills/에 스킬 .md 파일 생성
 
 ## 다음 우선 작업
 
@@ -33,7 +33,7 @@
 - [x] F-034: 사용자가 UI에서 실행 중인 에이전트 프로세스를 취소할 수 있다 (category: functional, priority: 3) — 5262136
 - [x] F-007: Init Project button triggers project initialization via the configured CLI agent (category: functional) — 5e4e038
 - [x] F-008: AnalyzerService generates a Command markdown file at .claude/commands/ (category: functional) — 5329710
-- [ ] F-009: AnalyzerService generates a Skill markdown file (category: functional)
+- [x] F-009: AnalyzerService generates a Skill markdown file (category: functional) — 2a313cb
 - [ ] F-010: AnalyzerService generates an MCP server spec file (category: functional)
 - [ ] F-011: AnalyzerService generates a hook configuration entry (category: functional)
 - [ ] F-012: AnalyzerService generates a sub-agent markdown file at .claude/agents/ (category: functional)
@@ -74,6 +74,17 @@
 - (없음 — 구현 시작 전)
 
 ## 세션 로그
+
+### 2026-04-20 — Ralph Loop 세션 19 (Coding Agent)
+
+- F-009: AnalyzerService.generateSkill()로 .claude/skills/에 스킬 .md 파일 생성
+  - src/service/AnalyzerService.ts
+    - SkillAnalysisResult 인터페이스 추가
+    - generateSkill(markdownInput, skillsDir): CLI sub-agent 호출 후 stdout 파싱, FileManager로 저장
+    - _buildSkillPrompt(): YAML frontmatter + 트리거 조건 + 동작 설명 섹션 포함 프롬프트 구성
+    - _extractCommandName() → _extractName()으로 리네임 (공통 헬퍼 통합)
+  - src/test/extension.test.ts: F-009 테스트 2건 추가 (stub runner 기반)
+  - 39 passing (기존 37 + F-009 2건)
 
 ### 2026-04-20 — Ralph Loop 세션 18 (Coding Agent)
 
