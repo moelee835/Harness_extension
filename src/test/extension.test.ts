@@ -2100,4 +2100,57 @@ suite('Extension Test Suite', () => {
 		);
 	});
 
+	// F-022: FileManager.read()가 지정된 경로의 파일 내용을 정확히 반환하는지 검증
+	test('F-022: FileManager.read()가 파일 내용을 정확히 반환해야 한다', async () => {
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		// 테스트용 임시 파일 생성
+		const tmpDir = os.tmpdir();
+		const testFilePath = path.join(tmpDir, `test-file-manager-f022-${Date.now()}.md`);
+		const testContent = '# F-022 테스트\n\n읽기 검증 내용입니다.';
+		await fs.writeFile(testFilePath, testContent, 'utf-8');
+
+		try {
+			const fileManager = new FileManager();
+			const result = await fileManager.read(testFilePath);
+
+			assert.strictEqual(
+				result,
+				testContent,
+				'FileManager.read() 반환값이 파일 내용과 일치해야 합니다.'
+			);
+		} finally {
+			await fs.unlink(testFilePath).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
+	// F-022: 존재하지 않는 파일 경로로 read() 호출 시 에러가 발생해야 한다
+	test('F-022: 파일이 존재하지 않으면 FileManager.read()가 에러를 던져야 한다', async () => {
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { FileManager } = ext.exports;
+
+		// 존재하지 않는 파일 경로
+		const nonExistentPath = path.join(os.tmpdir(), `non-existent-f022-${Date.now()}.md`);
+		const fileManager = new FileManager();
+
+		// read() 호출 시 에러가 발생해야 한다
+		await assert.rejects(
+			async () => fileManager.read(nonExistentPath),
+			'존재하지 않는 파일에 read()를 호출하면 에러가 발생해야 합니다.'
+		);
+	});
+
 });
