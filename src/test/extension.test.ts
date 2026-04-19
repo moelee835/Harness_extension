@@ -1572,6 +1572,159 @@ suite('Extension Test Suite', () => {
 		}
 	});
 
+	// F-011: AnalyzerService.generateHookEntry()가 CLI 에이전트를 호출하고
+	// settings.json의 hooks 섹션에 이벤트 이름과 셸 명령을 기록하는지 검증
+	test('F-011: AnalyzerService.generateHookEntry()가 CLI 에이전트를 호출하고 settings.json에 훅 항목을 추가해야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 설정 디렉토리 및 settings.json 생성
+		const tempDir = path.join(os.tmpdir(), `test-hook-f011-${Date.now()}`);
+		await fs.mkdir(tempDir, { recursive: true });
+		const settingsPath = path.join(tempDir, 'settings.json');
+		// 초기 settings.json — hooks 섹션이 비어 있는 상태
+		await fs.writeFile(settingsPath, JSON.stringify({ permissions: { allow: [], deny: [] }, hooks: {}, env: {} }, null, 2), 'utf-8');
+
+		// 스텁 IAgentRunner — invoke() 호출 시 훅 JSON을 onStdout으로 전달
+		let invokeWasCalled = false;
+		const stubHookContent = JSON.stringify({
+			event: 'pre-tool-use',
+			command: 'echo "pre-tool-use hook triggered"',
+		}, null, 2);
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				// invoke()가 호출되었음을 기록
+				invokeWasCalled = true;
+				// 스텁 출력을 onStdout 콜백으로 전달
+				if (onStdout) {
+					onStdout(stubHookContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			// FileManager와 스텁 러너로 AnalyzerService 인스턴스 생성
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			// generateHookEntry() 호출 — settingsPath의 hooks 섹션에 훅이 추가되어야 한다
+			const result = await analyzerService.generateHookEntry(
+				'# 테스트 훅\n\npre-tool-use 이벤트 발생 시 로그를 출력하는 훅을 만들어 주세요.',
+				settingsPath,
+			);
+
+			// CLI 에이전트(runner.invoke())가 호출되었는지 확인
+			assert.strictEqual(
+				invokeWasCalled,
+				true,
+				'AnalyzerService.generateHookEntry()이 CLI 에이전트(runner.invoke())를 호출해야 합니다.',
+			);
+
+			// 반환된 이벤트 이름이 올바른지 확인
+			assert.strictEqual(
+				result.event,
+				'pre-tool-use',
+				'반환된 event가 "pre-tool-use"여야 합니다.',
+			);
+
+			// 반환된 settingsPath가 입력과 동일한지 확인
+			assert.strictEqual(
+				result.settingsPath,
+				settingsPath,
+				'반환된 settingsPath가 입력 settingsPath와 동일해야 합니다.',
+			);
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(tempDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
+	// F-011: 생성된 훅 항목이 올바른 이벤트 이름과 셸 명령을 settings.json에 포함하는지 검증
+	test('F-011: settings.json의 hooks 섹션에 올바른 이벤트 이름과 셸 명령이 기록되어야 한다', async () => {
+		// Extension 활성화 및 ExtensionApi 획득
+		const ext = vscode.extensions.getExtension<ExtensionApi>(EXTENSION_ID);
+		assert.ok(ext, `Extension '${EXTENSION_ID}'을 찾을 수 없습니다.`);
+
+		if (!ext.isActive) {
+			await ext.activate();
+		}
+
+		const { AnalyzerService, FileManager } = ext.exports;
+
+		// 테스트용 임시 설정 디렉토리 및 settings.json 생성
+		const tempDir = path.join(os.tmpdir(), `test-hook-f011b-${Date.now()}`);
+		await fs.mkdir(tempDir, { recursive: true });
+		const settingsPath = path.join(tempDir, 'settings.json');
+		await fs.writeFile(settingsPath, JSON.stringify({ permissions: { allow: [], deny: [] }, hooks: {}, env: {} }, null, 2), 'utf-8');
+
+		// 이벤트 이름과 명령을 명확히 포함한 스텁 출력 정의
+		const expectedEvent = 'post-tool-use';
+		const expectedCommand = 'echo "post-tool-use completed"';
+		const stubHookContent = JSON.stringify({ event: expectedEvent, command: expectedCommand }, null, 2);
+
+		const stubRunner: IAgentRunner = {
+			invoke: async (_prompt: string, onStdout?: (chunk: string) => void): Promise<void> => {
+				if (onStdout) {
+					onStdout(stubHookContent);
+				}
+			},
+			cancel: () => { /* 스텁: 취소 동작 없음 */ },
+			isRunning: () => false,
+			getSpawnCommand: () => 'claude',
+		};
+
+		try {
+			const fileManager = new FileManager();
+			const analyzerService = new AnalyzerService(stubRunner, fileManager);
+
+			await analyzerService.generateHookEntry(
+				'post-tool-use 이벤트 후 완료 메시지를 출력하는 훅을 만들어 주세요.',
+				settingsPath,
+			);
+
+			// 갱신된 settings.json을 직접 읽어 검증
+			const updatedContent = await fs.readFile(settingsPath, 'utf-8');
+			const updatedSettings = JSON.parse(updatedContent) as {
+				hooks?: Record<string, Array<{ type: string; command: string }>>;
+			};
+
+			// hooks 섹션에 expectedEvent 키가 존재하는지 확인
+			assert.ok(
+				updatedSettings.hooks && Array.isArray(updatedSettings.hooks[expectedEvent]),
+				`settings.json hooks["${expectedEvent}"]가 배열로 존재해야 합니다.`,
+			);
+
+			// 해당 이벤트 배열에 추가된 훅 항목의 command가 일치하는지 확인
+			const hookEntries = updatedSettings.hooks![expectedEvent];
+			const added = hookEntries.find((e) => e.command === expectedCommand);
+			assert.ok(
+				added !== undefined,
+				`hooks["${expectedEvent}"]에 command="${expectedCommand}" 항목이 있어야 합니다.`,
+			);
+
+			// type 필드가 'command'인지 확인
+			assert.strictEqual(
+				added!.type,
+				'command',
+				'훅 항목의 type 필드가 "command"여야 합니다.',
+			);
+		} finally {
+			// 테스트 후 임시 디렉토리 정리
+			await fs.rm(tempDir, { recursive: true, force: true }).catch(() => { /* 정리 실패 무시 */ });
+		}
+	});
+
 	// F-021: 부모 디렉토리가 존재하지 않으면 FileManager.create()가 Error를 던지는지 검증
 	test('F-021: 부모 디렉토리가 없으면 FileManager.create()가 Error를 던져야 한다', async () => {
 		// Extension 활성화 및 ExtensionApi 획득

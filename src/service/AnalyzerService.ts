@@ -6,6 +6,25 @@ import type { IAgentRunner } from './IAgentRunner.js';
 import { FileManager } from '../persistence/FileManager.js';
 
 /**
+ * .claude/settings.json의 훅 항목 하나를 표현하는 내부 타입.
+ * type은 항상 'command'이고, command는 실행할 셸 명령 문자열이다.
+ */
+interface HookCommandEntry {
+	type: 'command';
+	command: string;
+}
+
+/**
+ * .claude/settings.json 파일의 스키마 타입.
+ * hooks 필드는 이벤트 이름을 키로, HookCommandEntry 배열을 값으로 갖는다.
+ */
+interface SettingsSchema {
+	permissions?: { allow: string[]; deny: string[] };
+	hooks?: Record<string, HookCommandEntry[]>;
+	env?: Record<string, string>;
+}
+
+/**
  * AnalyzerService.generateCommand() 호출 결과를 담는 객체.
  * 생성된 파일의 절대 경로와 파일 내용을 포함한다.
  */
@@ -39,12 +58,25 @@ export interface McpServerSpecResult {
 }
 
 /**
+ * AnalyzerService.generateHookEntry() 호출 결과를 담는 객체.
+ * 훅이 등록된 settings.json 경로, 이벤트 이름, 셸 명령을 포함한다.
+ */
+export interface HookEntryResult {
+	/** 훅 설정이 기록된 settings.json 파일의 절대 경로 */
+	settingsPath: string;
+	/** 훅이 등록된 이벤트 이름 (예: "pre-tool-use", "post-tool-use") */
+	event: string;
+	/** 이벤트 발생 시 실행할 셸 명령 문자열 */
+	command: string;
+}
+
+/**
  * CLI 에이전트(sub-agent)를 통해 요구사항을 분석하고 결과물(.md 파일)을 생성하는 서비스.
  *
  * F-008: 커맨드 .md 파일 생성 (.claude/commands/)
  * F-009: 스킬 .md 파일 생성 (.claude/skills/)
  * F-010: MCP 서버 스펙 .json 파일 생성 (지정 디렉토리)
- * F-011: 훅 설정 항목 생성
+ * F-011: 훅 설정 항목 생성 (.claude/settings.json의 hooks 섹션)
  * F-012: 서브에이전트 .md 파일 생성 (.claude/agents/)
  *
  * 에이전트에게 구조화된 프롬프트를 전달하고,
@@ -252,6 +284,98 @@ export class AnalyzerService {
 	}
 
 	/**
+	 * Markdown 형식의 요구사항 입력을 받아 CLI 에이전트(sub-agent)를 통해
+	 * 훅 설정 항목을 .claude/settings.json의 hooks 섹션에 추가한다.
+	 *
+	 * F-011: CLI 에이전트가 stdout으로 출력한 JSON을 파싱하여
+	 * event(훅 이벤트 이름)와 command(셸 명령) 필드를 추출하고,
+	 * 지정된 settings.json 파일의 hooks 섹션에 병합한다.
+	 *
+	 * 에이전트 출력 형식 예시:
+	 * ```json
+	 * {
+	 *   "event": "pre-tool-use",
+	 *   "command": "echo 'pre-tool-use hook'"
+	 * }
+	 * ```
+	 *
+	 * settings.json 훅 섹션 결과 예시:
+	 * ```json
+	 * {
+	 *   "hooks": {
+	 *     "pre-tool-use": [{"type": "command", "command": "echo 'pre-tool-use hook'"}]
+	 *   }
+	 * }
+	 * ```
+	 *
+	 * @param markdownInput - 훅을 설명하는 Markdown 형식의 요구사항 문자열
+	 * @param settingsPath - 훅을 추가할 settings.json 파일의 절대 경로
+	 * @returns 이벤트 이름, 셸 명령, 설정 파일 경로를 담은 결과 객체
+	 * @throws CLI 에이전트 출력에서 event 또는 command 필드를 추출할 수 없으면 Error를 던진다
+	 * @throws settings.json 파일이 존재하지 않으면 Error를 던진다
+	 */
+	public async generateHookEntry(
+		markdownInput: string,
+		settingsPath: string,
+	): Promise<HookEntryResult> {
+		// CLI 에이전트에게 전달할 프롬프트 구성
+		const prompt = this._buildHookEntryPrompt(markdownInput);
+
+		// CLI 에이전트(sub-agent) 호출 — stdout 청크를 배열로 수집
+		const stdoutChunks: string[] = [];
+		await this._runner.invoke(
+			prompt,
+			(chunk) => stdoutChunks.push(chunk),
+			undefined,
+		);
+
+		// 수집된 stdout 전체를 JSON으로 파싱할 대상 문자열로 사용
+		const output = stdoutChunks.join('');
+
+		// JSON에서 event와 command 필드 추출
+		const event = this._extractHookEvent(output);
+		if (event === null) {
+			throw new Error(
+				'CLI 에이전트 출력에서 event 필드를 추출할 수 없습니다. ' +
+				'에이전트 출력이 JSON 형식이며 "event" 필드를 포함해야 합니다.',
+			);
+		}
+
+		const command = this._extractHookCommand(output);
+		if (command === null) {
+			throw new Error(
+				'CLI 에이전트 출력에서 command 필드를 추출할 수 없습니다. ' +
+				'에이전트 출력이 JSON 형식이며 "command" 필드를 포함해야 합니다.',
+			);
+		}
+
+		// 기존 settings.json 내용을 읽어 JSON 파싱
+		const rawSettings = await this._fileManager.read(settingsPath);
+		const settings: SettingsSchema = JSON.parse(rawSettings) as SettingsSchema;
+
+		// hooks 섹션이 없으면 빈 객체로 초기화
+		if (!settings.hooks) {
+			settings.hooks = {};
+		}
+
+		// 해당 이벤트의 훅 배열이 없으면 빈 배열로 초기화
+		if (!settings.hooks[event]) {
+			settings.hooks[event] = [];
+		}
+
+		// 새 훅 항목을 해당 이벤트 배열에 추가
+		settings.hooks[event].push({ type: 'command', command });
+
+		// 수정된 settings 객체를 JSON 문자열로 직렬화 (들여쓰기 2칸)
+		const updatedContent = JSON.stringify(settings, null, 2);
+
+		// FileManager.update()를 통해 settings.json 덮어쓰기
+		await this._fileManager.update(settingsPath, updatedContent);
+
+		return { settingsPath, event, command };
+	}
+
+	/**
 	 * CLI 에이전트에게 전달할 커맨드 생성 프롬프트를 구성한다.
 	 * 에이전트는 YAML frontmatter(name 필드 포함)와 커맨드 설명 Markdown을
 	 * stdout으로 출력해야 한다.
@@ -343,6 +467,84 @@ export class AnalyzerService {
 			'요구사항:',
 			markdownInput,
 		].join('\n');
+	}
+
+	/**
+	 * CLI 에이전트에게 전달할 훅 설정 항목 생성 프롬프트를 구성한다.
+	 * 에이전트는 event(훅 이벤트 이름)와 command(셸 명령) 필드를 포함한
+	 * JSON 형식으로 stdout에 출력해야 한다.
+	 *
+	 * @param markdownInput - 사용자가 입력한 요구사항 Markdown 문자열
+	 * @returns CLI 에이전트에게 전달할 프롬프트 문자열
+	 */
+	private _buildHookEntryPrompt(markdownInput: string): string {
+		return [
+			'다음 요구사항을 분석하여 Claude Code 훅 설정 항목을 생성하세요.',
+			'',
+			'출력 형식은 반드시 아래 두 필드를 포함하는 JSON이어야 합니다:',
+			'',
+			'{',
+			'  "event": "<훅 이벤트 이름 (예: pre-tool-use, post-tool-use, pre-compact, stop)>",',
+			'  "command": "<이벤트 발생 시 실행할 셸 명령>"',
+			'}',
+			'',
+			'JSON 이외의 텍스트는 출력하지 마십시오.',
+			'',
+			'요구사항:',
+			markdownInput,
+		].join('\n');
+	}
+
+	/**
+	 * CLI 에이전트가 출력한 JSON 문자열에서 event 필드 값을 추출한다.
+	 * generateHookEntry()에서 훅 이벤트 이름 결정에 사용한다.
+	 * JSON.parse를 우선 시도하고 실패 시 정규식으로 대체한다.
+	 *
+	 * @param content - CLI 에이전트가 stdout으로 출력한 전체 JSON 문자열
+	 * @returns 추출된 event 값. 없으면 null 반환.
+	 */
+	private _extractHookEvent(content: string): string | null {
+		// JSON.parse로 event 필드 추출 시도 (이스케이프 문자 안전 처리)
+		try {
+			const parsed = JSON.parse(content) as Record<string, unknown>;
+			if (typeof parsed['event'] === 'string' && parsed['event'].length > 0) {
+				return parsed['event'];
+			}
+		} catch {
+			// 파싱 실패 시 정규식으로 대체
+		}
+		// 정규식으로 "event" 키 값 추출 (이스케이프 시퀀스 포함 처리)
+		const match = /"event"\s*:\s*"((?:[^"\\]|\\.)+)"/.exec(content);
+		if (!match || !match[1]) {
+			return null;
+		}
+		return match[1].trim();
+	}
+
+	/**
+	 * CLI 에이전트가 출력한 JSON 문자열에서 command 필드 값을 추출한다.
+	 * generateHookEntry()에서 실행할 셸 명령 결정에 사용한다.
+	 * JSON.parse를 우선 시도하고 실패 시 정규식으로 대체한다.
+	 *
+	 * @param content - CLI 에이전트가 stdout으로 출력한 전체 JSON 문자열
+	 * @returns 추출된 command 값. 없으면 null 반환.
+	 */
+	private _extractHookCommand(content: string): string | null {
+		// JSON.parse로 command 필드 추출 시도 (이스케이프 문자 안전 처리)
+		try {
+			const parsed = JSON.parse(content) as Record<string, unknown>;
+			if (typeof parsed['command'] === 'string' && parsed['command'].length > 0) {
+				return parsed['command'];
+			}
+		} catch {
+			// 파싱 실패 시 정규식으로 대체
+		}
+		// 정규식으로 "command" 키 값 추출 (이스케이프 시퀀스 포함 처리)
+		const match = /"command"\s*:\s*"((?:[^"\\]|\\.)+)"/.exec(content);
+		if (!match || !match[1]) {
+			return null;
+		}
+		return match[1].trim();
 	}
 
 	/**
